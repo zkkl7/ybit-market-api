@@ -3297,9 +3297,7 @@ export default async function handler(
                 }
 
 
-                if (!kline) {
-                  throw new Error("Incomplete or non-contiguous closed 5M kline history");
-                }
+
 
 
                 const item = {
@@ -3642,8 +3640,7 @@ diagnostics: {
         flow5mBasis:
           "Bybit 5min Open Interest aligned with completed 5M contract candles; used for Price×OI state transitions, CORRELATION_FLIP and REBUILD.",
 
-        executionStates:
-          finalRows,
+
         // Full bounded deep-scan output prevents top-N buckets hiding states.
         executionStates: finalRows,
         shortCovering: finalRows.filter(row => row.executionState === "SHORT_COVERING"),
