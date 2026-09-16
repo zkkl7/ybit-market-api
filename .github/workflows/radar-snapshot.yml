@@ -1,0 +1,129 @@
+name: Radar Snapshot
+
+on:
+  schedule:
+    # GitHub Actions cron uses UTC.
+    # Every 15 minutes.
+    - cron: "*/15 * * * *"
+
+  # Allows us to test it manually from the Actions page.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: radar-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch radar data
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p data
+
+          URL="https://ybit-market-api.vercel.app/api/scan"
+          TEMP_FILE="$(mktemp)"
+
+          echo "Fetching radar snapshot from Vercel..."
+
+          HTTP_CODE=$(curl \
+            --silent \
+            --show-error \
+            --location \
+            --retry 3 \
+            --retry-delay 5 \
+            --connect-timeout 20 \
+            --max-time 180 \
+            --output "$TEMP_FILE" \
+            --write-out "%{http_code}" \
+            "$URL")
+
+          echo "HTTP status: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Radar endpoint returned HTTP $HTTP_CODE"
+            cat "$TEMP_FILE" || true
+            exit 1
+          fi
+
+          # Make sure the response is valid JSON.
+          jq empty "$TEMP_FILE"
+
+          # Basic sanity check:
+          # radar output should be a JSON object and should contain
+          # at least one identifying/diagnostic field.
+          jq -e '
+            type == "object"
+            and (
+              has("version")
+              or has("status")
+              or has("universeCount")
+              or has("oiScannedCount")
+              or has("actionable")
+              or has("candidates")
+            )
+          ' "$TEMP_FILE" > /dev/null
+
+          FETCHED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+          # Wrap the original radar response with snapshot metadata.
+          jq \
+            --arg fetchedAt "$FETCHED_AT" \
+            --arg source "$URL" \
+            '{
+              snapshot: {
+                fetchedAt: $fetchedAt,
+                source: $source
+              },
+              radar: .
+            }' \
+            "$TEMP_FILE" > data/latest.json
+
+          echo "Snapshot created at $FETCHED_AT"
+
+          echo "Radar version:"
+          jq -r '.radar.version // "unknown"' data/latest.json
+
+          echo "Diagnostics:"
+          jq '{
+            fetchedAt: .snapshot.fetchedAt,
+            version: (.radar.version // null),
+            universeCount: (.radar.universeCount // null),
+            oiScannedCount: (.radar.oiScannedCount // null),
+            oiErrors: (.radar.oiErrors // null),
+            klineErrors: (.radar.klineErrors // null)
+          }' data/latest.json
+
+      - name: Commit latest snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- data/latest.json && git ls-files --error-unmatch data/latest.json >/dev/null 2>&1; then
+            echo "No snapshot changes to commit."
+            exit 0
+          fi
+
+          git config user.name "radar-snapshot-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add data/latest.json
+
+          git commit -m "chore: update radar snapshot"
+
+          # A previous scheduled run may have committed while this run
+          # was fetching data. Rebase before pushing.
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+
+          git push origin "HEAD:${GITHUB_REF_NAME}"
