@@ -15,7 +15,7 @@ async function bybit(path, params = {}) {
   const response = await fetch(url, {
     headers: {
       Accept: "application/json",
-      "User-Agent": "Bybit-OI-Radar/3.1",
+      "User-Agent": "Bybit-OI-Radar/4",
     },
   });
 
@@ -52,6 +52,7 @@ async function bybit(path, params = {}) {
 // ============================================================
 
 function num(value) {
+  if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
 
   return Number.isFinite(n)
@@ -132,7 +133,7 @@ function parseOI(list = []) {
     .filter(
       (item) =>
         Number.isFinite(item.ts) &&
-        item.oi !== null
+        item.oi !== null && item.oi > 0
     )
     .sort(
       (a, b) =>
@@ -142,6 +143,11 @@ function parseOI(list = []) {
 
   // current + 8 * 15M = 2H
   if (rows.length < 9) {
+    return null;
+  }
+
+  // Do not label missing/duplicate 15M samples as a complete 2H window.
+  if (rows.slice(0, 8).some((row, i) => row.ts - rows[i + 1].ts !== 900000)) {
     return null;
   }
 
@@ -360,6 +366,13 @@ function parseOI(list = []) {
 
     current,
 
+    oiSampleAt: rows[0].ts,
+    oiHighRetention: round(current / Math.max(...rows.slice(0, 9).map(r => r.oi)), 4),
+    // Evidence only; the cross-scan REBUILD state remains reserved.
+    oiRebuildEvidence: rows[0].oi > rows[1].oi && rows[1].oi > rows[2].oi &&
+      pct(rows[0].oi, rows[2].oi) >= 0.5 &&
+      pct(rows[2].oi, Math.max(...rows.slice(3, 9).map(r => r.oi))) <= -1,
+
 
     oi15mPct:
       round(
@@ -433,7 +446,7 @@ function parseOI(list = []) {
 // KLINE PARSER
 // ============================================================
 
-function parseKline(list = []) {
+function parseKline(list = [], now = Date.now()) {
   const rows = [...list]
     .map((item) => ({
       ts: Number(item[0]),
@@ -447,7 +460,10 @@ function parseKline(list = []) {
     .filter(
       (item) =>
         Number.isFinite(item.ts) &&
-        item.close !== null
+        item.ts + 300000 <= now &&
+        [item.open, item.high, item.low, item.close].every(v => v !== null && v > 0) &&
+        item.high >= Math.max(item.open, item.close) &&
+        item.low <= Math.min(item.open, item.close)
     )
     .sort(
       (a, b) =>
@@ -455,7 +471,11 @@ function parseKline(list = []) {
     );
 
 
-  if (rows.length < 13) {
+  if (rows.length < 15) {
+    return null;
+  }
+
+  if (rows.slice(0, 14).some((row, i) => row.ts - rows[i + 1].ts !== 300000)) {
     return null;
   }
 
@@ -465,13 +485,13 @@ function parseKline(list = []) {
 
 
   const change = (bars) => {
-    if (rows.length <= bars) {
+    if (rows.length < bars) {
       return null;
     }
 
     return pct(
       current,
-      rows[bars].open
+      rows[bars - 1].open
     );
   };
 
@@ -524,6 +544,10 @@ function parseKline(list = []) {
 
   return {
 
+    // Use completed bars: 1/3/12 bars mean exactly 5M/15M/1H.
+    priceSampleAt: rows[0].ts + 300000,
+    priceStructure: priceStructure(rows),
+
     price5mPct:
       round(
         change(1),
@@ -553,6 +577,149 @@ function parseKline(list = []) {
   };
 }
 
+
+// ============================================================
+// V4 price evidence from completed 5M candles, newest first.
+// A quiet price alone is not refusal; require a support retest + recovery,
+// or two closes reclaiming the preceding 15M high.
+function priceStructure(rows) {
+  const support = Math.min(...rows.slice(3, 12).map(r => r.low));
+  const recentLow = Math.min(...rows.slice(0, 3).map(r => r.low));
+  const keyLevel = Math.max(...rows.slice(3, 6).map(r => r.high));
+  const supportHeld = recentLow >= support * 0.9985 &&
+    recentLow <= support * 1.0015 &&
+    rows[0].close >= support && rows[1].close >= support &&
+    pct(rows[0].close, recentLow) >= 0.3 && rows[0].close >= rows[1].close;
+  const keyLevelReclaimed = rows[2].close <= keyLevel &&
+    rows[1].close > keyLevel && rows[0].close > keyLevel;
+  const lowerLows = rows[0].low < rows[1].low * 0.9995 &&
+    rows[1].low < rows[2].low * 0.9995 &&
+    rows[0].close < rows[1].close && rows[1].close < rows[2].close;
+  return { support, recentLow, keyLevel, supportHeld, keyLevelReclaimed, lowerLows };
+}
+
+// Discovery stays direction-agnostic. V4 execution takes precedence over
+// the legacy signal/trigger, which are retained separately for comparison.
+const EXECUTION_RULES = Object.freeze({
+  version: "OI-RADAR-V4",
+  price5mNoisePct: 0.1,
+  price15mNoisePct: 0.2,
+  price1hNoisePct: 0.5,
+  oi15mNoisePct: 0.3,
+  oi30mNoisePct: 0.5,
+  oiHighRetention: 0.97,
+  minBuildQuality: 40,
+  minRefusalVolume: 1.1,
+  maxPriceAgeMs: 900000,
+  maxOiAgeMs: 2100000,
+});
+
+function oiIsFalling(x) {
+  return (x.oi15mPct <= -0.3 && x.oi30mPct <= -0.5) ||
+    (x.oi15mPct <= 0 && x.oi1hPct <= -1 && x.oi2hPct <= -1);
+}
+
+function executionState(x, now = Date.now()) {
+  const r = EXECUTION_RULES;
+  const evidence = {
+    oiHigh: false,
+    oiRebuilding: false,
+    priceRefusal: false,
+    squeezeEligible: false,
+    // These require aligned history and persisted transitions, not one snapshot.
+    extensions: { CORRELATION_FLIP: "RESERVED", REBUILD: "RESERVED" },
+  };
+  const result = (state, bias, reason) => ({
+    executionState: state, directionalBias: bias, stateReason: reason,
+    executionEvidence: evidence,
+  });
+  const required = ["oi15mPct", "oi30mPct", "oi1hPct", "oi2hPct",
+    "price5mPct", "price15mPct", "price1hPct", "oiSampleAt", "priceSampleAt"];
+  if (required.some(key => !Number.isFinite(x[key])) ||
+      now - x.priceSampleAt > r.maxPriceAgeMs || now - x.oiSampleAt > r.maxOiAgeMs ||
+      x.priceSampleAt > now || x.oiSampleAt > now ||
+      Math.abs(x.priceSampleAt - x.oiSampleAt) > r.maxOiAgeMs) {
+    return result("INSUFFICIENT_DATA", "NEUTRAL", "Missing, stale or unaligned Price/OI samples; execution withheld.");
+  }
+  const { oi15mPct: o15, oi30mPct: o30, oi1hPct: o1, oi2hPct: o2,
+    price5mPct: p5, price15mPct: p15, price1hPct: p1 } = x;
+  const falling = oiIsFalling(x);
+  const rising = o15 >= r.oi15mNoisePct && (o30 >= r.oi30mNoisePct || o1 >= 1);
+  const priceDown = (p15 <= -r.price15mNoisePct && p5 <= 0) ||
+    (p1 <= -r.price1hNoisePct && p15 <= 0 && p5 < r.price5mNoisePct);
+  const priceUp = (p15 >= r.price15mNoisePct && p5 >= 0) ||
+    (p1 >= r.price1hNoisePct && p15 >= 0 && p5 > -r.price5mNoisePct);
+  evidence.oiHigh = Number.isFinite(x.oiHighRetention) &&
+    x.oiHighRetention >= r.oiHighRetention && (o1 >= 3 || o2 >= 5);
+  evidence.oiRebuilding = x.oiRebuildEvidence === true && rising &&
+    x.buildQuality >= r.minBuildQuality;
+
+  // Falling OI wins over the historical high: a covering bounce is not new longs.
+  if (falling) {
+    if (priceUp) return result("SHORT_COVERING", "BULLISH", "OI declining while price rises; covering-compatible bounce, not fresh long accumulation.");
+    if (priceDown) return result("DELEVERAGING", "BEARISH", "OI and price declining together; positions are being reduced.");
+    return result("OI_REDUCTION", "NEUTRAL", "OI declining but price direction is mixed or inside the noise band.");
+  }
+  if (rising && priceDown) {
+    const control = x.priceStructure?.lowerLows === true &&
+      p5 <= -r.price5mNoisePct && p15 <= -r.price15mNoisePct && p1 <= -r.price1hNoisePct &&
+      o30 >= r.oi30mNoisePct && o1 >= 1 && x.buildQuality >= r.minBuildQuality &&
+      x.volume15mRatio >= 1.1;
+    return control
+      ? result("SHORT_CONTROL", "BEARISH", "OI builds across windows while 5M/15M/1H price falls; successive lower lows and volume confirm downside control.")
+      : result("SHORT_BUILD", "BEARISH", "OI rises while price falls; added exposure is not a long signal, even with negative funding or an OI spike.");
+  }
+  evidence.priceRefusal = (evidence.oiHigh || evidence.oiRebuilding) &&
+    o15 >= 0 && o30 >= 0 && p5 >= r.price5mNoisePct && p15 >= 0 && p1 < 5 &&
+    x.buildQuality >= r.minBuildQuality && x.isOiSpike !== true &&
+    x.volume15mRatio >= r.minRefusalVolume &&
+    (x.priceStructure?.supportHeld === true || x.priceStructure?.keyLevelReclaimed === true);
+  evidence.squeezeEligible = evidence.priceRefusal &&
+    Number.isFinite(x.fundingRate) && x.fundingRate <= -0.0005;
+  if (evidence.priceRefusal) {
+    return result("PRICE_REFUSAL", "BULLISH", x.priceStructure.keyLevelReclaimed
+      ? "Retained/rebuilding OI plus two closes reclaiming the preceding 15M high, with build quality and volume confirmation."
+      : "Retained/rebuilding OI plus a held support retest and price recovery, with build quality and volume confirmation.");
+  }
+  if (rising || (o15 >= 0 && (o30 >= 1 || o1 >= 2 || o2 >= 5))) {
+    return result("POSITION_BUILD", "NEUTRAL", "OI exposure is building/retained; no confirmed bearish control or price-refusal setup. Direction is not inferred from OI alone.");
+  }
+  return result("WATCH", "NEUTRAL", "Price/OI windows are mixed or inside noise bands; no execution setup confirmed.");
+}
+
+function applyExecution(x, now = Date.now()) {
+  x.legacySignal = classify(x);
+  x.legacyTrigger = triggerState(x);
+  x.legacyScore = finalScore({ ...x, signal: x.legacySignal, trigger: x.legacyTrigger });
+  Object.assign(x, executionState(x, now));
+  x.signal = x.executionState;
+  x.trigger = "NONE";
+  const extended = x.price1hPct >= 12 || (x.price1hPct >= 8 && x.price15mPct >= 3);
+  x.executionRisk = extended ? "EXTENDED" : null;
+  if (x.executionState === "PRICE_REFUSAL") {
+    x.signal = x.executionEvidence.squeezeEligible ? "SQUEEZE_READY" : "PRICE_REFUSAL";
+    if (x.price5mPct >= 0.3 && x.price15mPct > 0 && x.volume15mRatio >= 1.5) {
+      x.signal = "TRIGGERING";
+      x.trigger = "ACTIVE";
+    } else {
+      x.trigger = "EARLY";
+    }
+  } else if (x.executionState === "SHORT_CONTROL") {
+    x.trigger = "DOWNSIDE_ACTIVE";
+  } else if (x.executionState === "SHORT_BUILD") {
+    x.trigger = "DOWNSIDE_WATCH";
+  } else if (x.executionState === "POSITION_BUILD") {
+    x.trigger = x.isOiSpike ? "SPIKE_WAIT" : "LOADING";
+  }
+  if (extended) x.trigger = "NONE";
+  // score ranks radar attention, not long conviction; funding only rewards
+  // confirmed price refusal. Preserve the old score for comparisons.
+  x.score = finalScore({ ...x,
+    fundingRate: x.executionState === "PRICE_REFUSAL" ? x.fundingRate : 0,
+    signal: extended ? "EXTENDED" : x.isOiSpike ? "OI_SPIKE" : x.signal,
+  });
+  return x;
+}
 
 // ============================================================
 // DISCOVERY SCORE
@@ -1606,7 +1773,7 @@ export default async function handler(
 
 
                 if (!oi) {
-                  return null;
+                  throw new Error("Incomplete or non-contiguous 15M OI history");
                 }
 
 
@@ -1617,6 +1784,10 @@ export default async function handler(
 
                   singleOpenInterest:
                     oi.current,
+
+                  oiSampleAt: oi.oiSampleAt,
+                  oiHighRetention: oi.oiHighRetention,
+                  oiRebuildEvidence: oi.oiRebuildEvidence,
 
 
                   oi15mPct:
@@ -1820,11 +1991,18 @@ export default async function handler(
     // 6. KLINE DEEP SCAN
     // ========================================================
 
-    const deepList =
-      oiCandidates.slice(
-        0,
-        80
-      );
+    const discoveryList = oiCandidates.slice(0, 80);
+    const discovered = new Set(discoveryList.map(row => row.symbol));
+    // Preserve the discovery ranking/cap. A bounded separate lane makes
+    // OI-down / price-up cases observable without changing discovery rules.
+    const reductionList = oiRows
+      .filter(row => !discovered.has(row.symbol) && oiIsFalling(row))
+      .sort((a, b) => Math.abs(b.oi30mPct) - Math.abs(a.oi30mPct))
+      .slice(0, 20);
+    const deepList = [
+      ...discoveryList.map(row => ({ ...row, scanLane: "DISCOVERY" })),
+      ...reductionList.map(row => ({ ...row, scanLane: "OI_REDUCTION" })),
+    ];
 
 
     const finalRows = [];
@@ -1879,13 +2057,16 @@ export default async function handler(
 
 
                 if (!kline) {
-                  return null;
+                  throw new Error("Incomplete or non-contiguous closed 5M kline history");
                 }
 
 
                 const item = {
 
                   ...row,
+
+                  priceSampleAt: kline.priceSampleAt,
+                  priceStructure: kline.priceStructure,
 
 
                   price5mPct:
@@ -1925,22 +2106,7 @@ export default async function handler(
                 };
 
 
-                item.signal =
-                  classify(
-                    item
-                  );
-
-
-                item.trigger =
-                  triggerState(
-                    item
-                  );
-
-
-                item.score =
-                  finalScore(
-                    item
-                  );
+                applyExecution(item);
 
 
                 return item;
@@ -1995,11 +2161,8 @@ export default async function handler(
 
         .filter(
           (item) =>
-            item.signal &&
-            item.signal !==
-              "EXTENDED" &&
-            item.signal !==
-              "UNWINDING"
+            ["POSITION_BUILD", "SHORT_BUILD", "SHORT_CONTROL", "PRICE_REFUSAL"].includes(item.executionState) &&
+            item.executionRisk !== "EXTENDED"
         )
 
         .sort(
@@ -2024,8 +2187,7 @@ export default async function handler(
 
         .filter(
           (item) =>
-            item.signal ===
-              "OI_SPIKE"
+            item.isOiSpike === true
         )
 
         .sort(
@@ -2050,8 +2212,7 @@ export default async function handler(
 
         .filter(
           (item) =>
-            item.signal ===
-              "COOLING"
+            item.legacySignal === "COOLING"
         )
 
         .sort(
@@ -2076,8 +2237,7 @@ export default async function handler(
 
         .filter(
           (item) =>
-            item.signal ===
-              "UNWINDING"
+            ["DELEVERAGING", "SHORT_COVERING", "OI_REDUCTION"].includes(item.executionState)
         )
 
         .sort(
@@ -2102,8 +2262,7 @@ export default async function handler(
 
         .filter(
           (item) =>
-            item.signal ===
-              "EXTENDED"
+            item.executionRisk === "EXTENDED"
         )
 
         .sort(
@@ -2132,7 +2291,7 @@ export default async function handler(
 
 
         version:
-          "OI-RADAR-V3.1",
+          "OI-RADAR-V4",
 
 
         source:
@@ -2157,6 +2316,12 @@ export default async function handler(
 
 
         diagnostics: {
+
+          reductionDeepScannedCount: reductionList.length,
+          executionStateCounts: finalRows.reduce((counts, row) => {
+            counts[row.executionState] = (counts[row.executionState] || 0) + 1;
+            return counts;
+          }, {}),
 
           universeCount:
             universe.length,
@@ -2207,6 +2372,14 @@ export default async function handler(
         // ====================================================
         // 主要候选
         // ====================================================
+
+        executionRules: EXECUTION_RULES,
+        scoreMeaning: "Radar attention only; use executionState and directionalBias for direction.",
+        priceWindowBasis: "Completed 5M candles; exact 1/3/12-bar returns and completed-bar volume.",
+        // Full bounded deep-scan output prevents top-N buckets hiding states.
+        executionStates: finalRows,
+        shortCovering: finalRows.filter(row => row.executionState === "SHORT_COVERING"),
+        deleveraging: finalRows.filter(row => row.executionState === "DELEVERAGING"),
 
         candidates:
           actionable.slice(
@@ -2271,7 +2444,7 @@ export default async function handler(
 
 
         version:
-          "OI-RADAR-V3.1",
+          "OI-RADAR-V4",
 
 
         message:
