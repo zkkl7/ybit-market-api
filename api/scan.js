@@ -15,7 +15,7 @@ async function bybit(path, params = {}) {
   const response = await fetch(url, {
     headers: {
       Accept: "application/json",
-      "User-Agent": "Bybit-OI-Radar/4",
+      "User-Agent": "Bybit-OI-Radar/4.1",
     },
   });
 
@@ -577,7 +577,945 @@ function parseKline(list = [], now = Date.now()) {
   };
 }
 
+// ============================================================
+// V4.1 — 5M PRICE × OI FLOW
+//
+// Reconstruct recent Price/OI history directly from Bybit.
+// No persisted 5M snapshots are required.
+//
+// We try both possible OI timestamp alignments:
+// 1. OI timestamp == candle close time
+// 2. OI timestamp == candle start time
+//
+// Whichever produces more valid aligned samples is used.
+// ============================================================
 
+function pearson(xs = [], ys = []) {
+
+  if (
+    xs.length !== ys.length ||
+    xs.length < 3
+  ) {
+    return null;
+  }
+
+
+  const mx = avg(xs);
+  const my = avg(ys);
+
+
+  if (
+    mx === null ||
+    my === null
+  ) {
+    return null;
+  }
+
+
+  let numerator = 0;
+  let dx2 = 0;
+  let dy2 = 0;
+
+
+  for (
+    let i = 0;
+    i < xs.length;
+    i++
+  ) {
+
+    const dx =
+      xs[i] - mx;
+
+    const dy =
+      ys[i] - my;
+
+
+    numerator +=
+      dx * dy;
+
+    dx2 +=
+      dx * dx;
+
+    dy2 +=
+      dy * dy;
+  }
+
+
+  if (
+    dx2 === 0 ||
+    dy2 === 0
+  ) {
+    return null;
+  }
+
+
+  return (
+    numerator /
+    Math.sqrt(
+      dx2 * dy2
+    )
+  );
+}
+
+
+// ============================================================
+// 5M FLOW PARSER
+// ============================================================
+
+function parsePriceOiFlow5m(
+  klineList = [],
+  oiList = [],
+  now = Date.now()
+) {
+
+  // ----------------------------------------------------------
+  // CLOSED 5M PRICE CANDLES
+  // ----------------------------------------------------------
+
+  const prices =
+    [...klineList]
+
+      .map(
+        (item) => ({
+
+          start:
+            Number(item[0]),
+
+          closeAt:
+            Number(item[0]) +
+            300000,
+
+          open:
+            num(item[1]),
+
+          high:
+            num(item[2]),
+
+          low:
+            num(item[3]),
+
+          close:
+            num(item[4]),
+
+          volume:
+            num(item[5]),
+        })
+      )
+
+      .filter(
+        (row) =>
+          Number.isFinite(
+            row.start
+          ) &&
+
+          row.closeAt <= now &&
+
+          [
+            row.open,
+            row.high,
+            row.low,
+            row.close,
+          ].every(
+            (value) =>
+              value !== null &&
+              value > 0
+          )
+      )
+
+      .sort(
+        (a, b) =>
+          b.start -
+          a.start
+      );
+
+
+  // ----------------------------------------------------------
+  // 5M OI
+  // ----------------------------------------------------------
+
+  const oiRows =
+    [...oiList]
+
+      .map(
+        (item) => ({
+
+          ts:
+            Number(
+              item.timestamp
+            ),
+
+          oi:
+            num(
+              item.singleOpenInterest
+            ),
+        })
+      )
+
+      .filter(
+        (row) =>
+          Number.isFinite(
+            row.ts
+          ) &&
+
+          row.oi !== null &&
+          row.oi > 0 &&
+          row.ts <= now
+      )
+
+      .sort(
+        (a, b) =>
+          b.ts -
+          a.ts
+      );
+
+
+  if (
+    prices.length < 14 ||
+    oiRows.length < 14
+  ) {
+    return null;
+  }
+
+
+  // ----------------------------------------------------------
+  // TIMESTAMP ALIGNMENT
+  //
+  // Bybit explicitly documents Kline timestamp as startTime,
+  // while OI only exposes timestamp.
+  //
+  // Therefore try both:
+  // OI timestamp = candle close
+  // OI timestamp = candle start
+  //
+  // Use the alignment producing more samples.
+  // ----------------------------------------------------------
+
+  const priceByClose =
+    new Map(
+
+      prices.map(
+        (row) => [
+          row.closeAt,
+          row
+        ]
+      )
+    );
+
+
+  const priceByStart =
+    new Map(
+
+      prices.map(
+        (row) => [
+          row.start,
+          row
+        ]
+      )
+    );
+
+
+  const align =
+    (priceMap) =>
+
+      oiRows
+
+        .map(
+          (oiRow) => {
+
+            const price =
+              priceMap.get(
+                oiRow.ts
+              );
+
+
+            if (!price) {
+              return null;
+            }
+
+
+            return {
+
+              ts:
+                oiRow.ts,
+
+              oi:
+                oiRow.oi,
+
+              price:
+                price.close,
+
+              low:
+                price.low,
+
+              high:
+                price.high,
+
+              volume:
+                price.volume,
+            };
+          }
+        )
+
+        .filter(Boolean)
+
+        .sort(
+          (a, b) =>
+            a.ts -
+            b.ts
+        );
+
+
+  const closeAligned =
+    align(
+      priceByClose
+    );
+
+
+  const startAligned =
+    align(
+      priceByStart
+    );
+
+
+  const aligned =
+    closeAligned.length >=
+    startAligned.length
+
+      ? closeAligned
+
+      : startAligned;
+
+
+  const alignmentMode =
+    closeAligned.length >=
+    startAligned.length
+
+      ? "OI_TO_CANDLE_CLOSE"
+
+      : "OI_TO_CANDLE_START";
+
+
+  if (
+    aligned.length < 13
+  ) {
+    return null;
+  }
+
+
+  // ----------------------------------------------------------
+  // Require continuous 5M timestamps.
+  // ----------------------------------------------------------
+
+  const recentAligned =
+    aligned.slice(-25);
+
+
+  if (
+    recentAligned
+      .slice(1)
+      .some(
+        (row, index) =>
+          row.ts -
+          recentAligned[index].ts !==
+          300000
+      )
+  ) {
+    return null;
+  }
+
+
+  // ----------------------------------------------------------
+  // BUILD 5M TRANSITIONS
+  // oldest -> newest
+  // ----------------------------------------------------------
+
+  const steps = [];
+
+
+  for (
+    let i = 1;
+    i < recentAligned.length;
+    i++
+  ) {
+
+    const prev =
+      recentAligned[i - 1];
+
+    const curr =
+      recentAligned[i];
+
+
+    const pricePct =
+      pct(
+        curr.price,
+        prev.price
+      );
+
+
+    const oiPct =
+      pct(
+        curr.oi,
+        prev.oi
+      );
+
+
+    if (
+      !Number.isFinite(
+        pricePct
+      ) ||
+
+      !Number.isFinite(
+        oiPct
+      )
+    ) {
+      continue;
+    }
+
+
+    let state =
+      "MIXED";
+
+
+    // --------------------------------------------------------
+    // OI UP + PRICE DOWN
+    // --------------------------------------------------------
+
+    if (
+      oiPct >= 0.15 &&
+      pricePct <= -0.10
+    ) {
+
+      state =
+        "SHORT_BUILD";
+    }
+
+
+    // --------------------------------------------------------
+    // OI DOWN + PRICE DOWN
+    // --------------------------------------------------------
+
+    else if (
+      oiPct <= -0.15 &&
+      pricePct <= -0.10
+    ) {
+
+      state =
+        "DELEVERAGING";
+    }
+
+
+    // --------------------------------------------------------
+    // OI DOWN + PRICE UP
+    // --------------------------------------------------------
+
+    else if (
+      oiPct <= -0.15 &&
+      pricePct >= 0.10
+    ) {
+
+      state =
+        "SHORT_COVERING";
+    }
+
+
+    // --------------------------------------------------------
+    // OI UP + PRICE UP
+    // --------------------------------------------------------
+
+    else if (
+      oiPct >= 0.15 &&
+      pricePct >= 0.10
+    ) {
+
+      state =
+        "LONG_BUILD";
+    }
+
+
+    // --------------------------------------------------------
+    // OI UP + PRICE QUIET
+    // --------------------------------------------------------
+
+    else if (
+      oiPct >= 0.15 &&
+      Math.abs(
+        pricePct
+      ) < 0.10
+    ) {
+
+      state =
+        "POSITION_BUILD";
+    }
+
+
+    steps.push({
+
+      ts:
+        curr.ts,
+
+      price:
+        round(
+          curr.price,
+          10
+        ),
+
+      oi:
+        round(
+          curr.oi,
+          4
+        ),
+
+      pricePct:
+        round(
+          pricePct,
+          3
+        ),
+
+      oiPct:
+        round(
+          oiPct,
+          3
+        ),
+
+      state,
+    });
+  }
+
+
+  if (
+    steps.length < 12
+  ) {
+    return null;
+  }
+
+
+  // ----------------------------------------------------------
+  // WINDOW HELPERS
+  // ----------------------------------------------------------
+
+  const sum =
+    (rows, key) =>
+
+      rows.reduce(
+        (total, row) =>
+
+          total +
+
+          (
+            Number.isFinite(
+              row[key]
+            )
+
+              ? row[key]
+
+              : 0
+          ),
+
+        0
+      );
+
+
+  const recent6 =
+    steps.slice(-6);
+
+
+  const prior6 =
+    steps.slice(
+      -12,
+      -6
+    );
+
+
+  // ----------------------------------------------------------
+  // CORRELATION
+  // ----------------------------------------------------------
+
+  const correlation30m =
+    pearson(
+
+      recent6.map(
+        (row) =>
+          row.pricePct
+      ),
+
+      recent6.map(
+        (row) =>
+          row.oiPct
+      )
+    );
+
+
+  const correlationPrior30m =
+    pearson(
+
+      prior6.map(
+        (row) =>
+          row.pricePct
+      ),
+
+      prior6.map(
+        (row) =>
+          row.oiPct
+      )
+    );
+
+
+  const recent12 =
+    steps.slice(-12);
+
+
+  const correlation60m =
+    pearson(
+
+      recent12.map(
+        (row) =>
+          row.pricePct
+      ),
+
+      recent12.map(
+        (row) =>
+          row.oiPct
+      )
+    );
+
+
+  const recentPrice30m =
+    sum(
+      recent6,
+      "pricePct"
+    );
+
+
+  const recentOi30m =
+    sum(
+      recent6,
+      "oiPct"
+    );
+
+
+  const priorPrice30m =
+    sum(
+      prior6,
+      "pricePct"
+    );
+
+
+  const priorOi30m =
+    sum(
+      prior6,
+      "oiPct"
+    );
+
+
+  const shortBuildRecent =
+    recent6.filter(
+      (row) =>
+        row.state ===
+        "SHORT_BUILD"
+    ).length;
+
+
+  const shortCoverRecent =
+    recent6.filter(
+      (row) =>
+        row.state ===
+        "SHORT_COVERING"
+    ).length;
+
+
+  const deleverageRecent =
+    recent6.filter(
+      (row) =>
+        row.state ===
+        "DELEVERAGING"
+    ).length;
+
+
+  const priorShortBuild =
+    prior6.filter(
+      (row) =>
+        row.state ===
+        "SHORT_BUILD"
+    ).length;
+
+
+  const priorDeleveraging =
+    prior6.filter(
+      (row) =>
+        row.state ===
+        "DELEVERAGING"
+    ).length;
+
+
+  // ==========================================================
+  // CORRELATION FLIP
+  //
+  // Example:
+  //
+  // earlier:
+  // OI ↓ + Price ↓
+  // → positive correlation / deleveraging
+  //
+  // later:
+  // OI ↓ + Price ↑
+  // → negative correlation / short covering
+  //
+  // Require actual state sequence, not correlation alone.
+  // ==========================================================
+
+  const correlationFlip =
+
+    correlationPrior30m !==
+      null &&
+
+    correlation30m !==
+      null &&
+
+
+    correlationPrior30m >=
+      0.15 &&
+
+    correlation30m <=
+      -0.20 &&
+
+
+    recentPrice30m >=
+      0.25 &&
+
+    recentOi30m <=
+      -0.35 &&
+
+
+    shortCoverRecent >=
+      2 &&
+
+
+    (
+      priorShortBuild >=
+        1 ||
+
+      priorDeleveraging >=
+        2
+    );
+
+
+  // ==========================================================
+  // REBUILD
+  //
+  // Previous phase:
+  // OI reduction / short covering.
+  //
+  // Latest 15M:
+  // OI starts building again,
+  // but price refuses to make a fresh low.
+  // ==========================================================
+
+  const last3 =
+    steps.slice(-3);
+
+
+  const beforeLast3 =
+    steps.slice(
+      -9,
+      -3
+    );
+
+
+  const rebuildOi =
+    sum(
+      last3,
+      "oiPct"
+    );
+
+
+  const rebuildPrice =
+    sum(
+      last3,
+      "pricePct"
+    );
+
+
+  const previousReduction =
+    beforeLast3.filter(
+
+      (row) =>
+        row.state ===
+          "SHORT_COVERING" ||
+
+        row.state ===
+          "DELEVERAGING"
+    ).length;
+
+
+  const latestPoint =
+    recentAligned[
+      recentAligned.length -
+      1
+    ];
+
+
+  const priorPoints =
+    recentAligned.slice(
+      -9,
+      -3
+    );
+
+
+  const previousLow =
+    priorPoints.length
+
+      ? Math.min(
+          ...priorPoints.map(
+            (row) =>
+              row.low
+          )
+        )
+
+      : null;
+
+
+  const priceRefusedNewLow =
+
+    previousLow !==
+      null &&
+
+    latestPoint.low >=
+      previousLow *
+      0.9985;
+
+
+  const rebuild =
+
+    rebuildOi >=
+      0.40 &&
+
+    rebuildPrice >=
+      -0.15 &&
+
+    previousReduction >=
+      2 &&
+
+    priceRefusedNewLow;
+
+
+  return {
+
+    alignmentMode,
+
+
+    sampleCount:
+      recentAligned.length,
+
+
+    stepCount:
+      steps.length,
+
+
+    correlation30m:
+
+      correlation30m !==
+        null
+
+        ? round(
+            correlation30m,
+            3
+          )
+
+        : null,
+
+
+    correlationPrior30m:
+
+      correlationPrior30m !==
+        null
+
+        ? round(
+            correlationPrior30m,
+            3
+          )
+
+        : null,
+
+
+    correlation60m:
+
+      correlation60m !==
+        null
+
+        ? round(
+            correlation60m,
+            3
+          )
+
+        : null,
+
+
+    priorPrice30mPct:
+      round(
+        priorPrice30m,
+        3
+      ),
+
+
+    priorOi30mPct:
+      round(
+        priorOi30m,
+        3
+      ),
+
+
+    recentPrice30mPct:
+      round(
+        recentPrice30m,
+        3
+      ),
+
+
+    recentOi30mPct:
+      round(
+        recentOi30m,
+        3
+      ),
+
+
+    shortBuildRecent,
+
+    shortCoverRecent,
+
+    deleverageRecent,
+
+    priorShortBuild,
+
+    priorDeleveraging,
+
+
+    correlationFlip,
+
+    rebuild,
+
+
+    rebuildOiPct:
+      round(
+        rebuildOi,
+        3
+      ),
+
+
+    rebuildPricePct:
+      round(
+        rebuildPrice,
+        3
+      ),
+
+
+    priceRefusedNewLow,
+
+
+    // Keep only last hour in JSON output.
+    recentSteps:
+      steps.slice(-12),
+  };
+}
 // ============================================================
 // V4 price evidence from completed 5M candles, newest first.
 // A quiet price alone is not refusal; require a support retest + recovery,
@@ -601,7 +1539,7 @@ function priceStructure(rows) {
 // Discovery stays direction-agnostic. V4 execution takes precedence over
 // the legacy signal/trigger, which are retained separately for comparison.
 const EXECUTION_RULES = Object.freeze({
-  version: "OI-RADAR-V4",
+  version: "OI-RADAR-V4.1",
   price5mNoisePct: 0.1,
   price15mNoisePct: 0.2,
   price1hNoisePct: 0.5,
@@ -622,12 +1560,40 @@ function oiIsFalling(x) {
 function executionState(x, now = Date.now()) {
   const r = EXECUTION_RULES;
   const evidence = {
-    oiHigh: false,
-    oiRebuilding: false,
-    priceRefusal: false,
-    squeezeEligible: false,
-    // These require aligned history and persisted transitions, not one snapshot.
-    extensions: { CORRELATION_FLIP: "RESERVED", REBUILD: "RESERVED" },
+
+    oiHigh:
+      false,
+
+    oiRebuilding:
+      false,
+
+    priceRefusal:
+      false,
+
+    squeezeEligible:
+      false,
+
+
+    correlationFlip:
+      x.flow5m?.correlationFlip ===
+      true,
+
+
+    rebuild:
+      x.flow5m?.rebuild ===
+      true,
+
+
+    extensions: {
+
+      CORRELATION_FLIP:
+        x.flow5m?.correlationFlip ===
+        true,
+
+      REBUILD:
+        x.flow5m?.rebuild ===
+        true,
+    },
   };
   const result = (state, bias, reason) => ({
     executionState: state, directionalBias: bias, stateReason: reason,
@@ -651,9 +1617,121 @@ function executionState(x, now = Date.now()) {
     (p1 >= r.price1hNoisePct && p15 >= 0 && p5 > -r.price5mNoisePct);
   evidence.oiHigh = Number.isFinite(x.oiHighRetention) &&
     x.oiHighRetention >= r.oiHighRetention && (o1 >= 3 || o2 >= 5);
-  evidence.oiRebuilding = x.oiRebuildEvidence === true && rising &&
-    x.buildQuality >= r.minBuildQuality;
+  evidence.oiRebuilding =
 
+    (
+      x.oiRebuildEvidence ===
+        true ||
+
+      evidence.rebuild
+    ) &&
+
+    x.buildQuality >=
+      r.minBuildQuality;
+  // ==========================================================
+  // V4.1 — CORRELATION FLIP
+  //
+  // This must be evaluated before generic OI falling logic,
+  // otherwise it would only appear as SHORT_COVERING.
+  // ==========================================================
+
+  if (
+    evidence.correlationFlip
+  ) {
+
+    return result(
+
+      "CORRELATION_FLIP",
+
+      "BULLISH",
+
+      "5M Price/OI relationship flipped from prior same-direction deleveraging into price-up / OI-down short covering."
+    );
+  }
+
+
+  // ==========================================================
+  // V4.1 — REBUILD
+  //
+  // OI comes back after deleveraging / covering,
+  // while price refuses to make another low.
+  // ==========================================================
+
+  if (
+    evidence.rebuild
+  ) {
+
+    const rebuildRefusal =
+
+      p5 >=
+        r.price5mNoisePct &&
+
+      p15 >=
+        0 &&
+
+      p1 <
+        5 &&
+
+      x.volume15mRatio >=
+        r.minRefusalVolume &&
+
+      (
+        x.priceStructure
+          ?.supportHeld ===
+          true ||
+
+        x.priceStructure
+          ?.keyLevelReclaimed ===
+          true ||
+
+        x.flow5m
+          ?.priceRefusedNewLow ===
+          true
+      );
+
+
+    // --------------------------------------------------------
+    // REBUILD + PRICE REFUSAL
+    // --------------------------------------------------------
+
+    if (
+      rebuildRefusal
+    ) {
+
+      evidence.priceRefusal =
+        true;
+
+
+      evidence.squeezeEligible =
+
+        Number.isFinite(
+          x.fundingRate
+        ) &&
+
+        x.fundingRate <=
+          -0.0005;
+
+
+      return result(
+
+        "PRICE_REFUSAL",
+
+        "BULLISH",
+
+        "5M OI rebuilt after deleveraging/covering while price refused a fresh low; price and volume confirm the rebuild."
+      );
+    }
+
+
+    return result(
+
+      "REBUILD",
+
+      "BULLISH",
+
+      "5M OI is rebuilding after a prior deleveraging/covering sequence while price refuses a fresh low."
+    );
+  }
   // Falling OI wins over the historical high: a covering bounce is not new longs.
   if (falling) {
     if (priceUp) return result("SHORT_COVERING", "BULLISH", "OI declining while price rises; covering-compatible bounce, not fresh long accumulation.");
@@ -704,12 +1782,53 @@ function applyExecution(x, now = Date.now()) {
     } else {
       x.trigger = "EARLY";
     }
-  } else if (x.executionState === "SHORT_CONTROL") {
-    x.trigger = "DOWNSIDE_ACTIVE";
-  } else if (x.executionState === "SHORT_BUILD") {
-    x.trigger = "DOWNSIDE_WATCH";
-  } else if (x.executionState === "POSITION_BUILD") {
-    x.trigger = x.isOiSpike ? "SPIKE_WAIT" : "LOADING";
+  } else if (
+    x.executionState ===
+    "CORRELATION_FLIP"
+  ) {
+
+    x.trigger =
+      "FLIP_WATCH";
+
+
+  } else if (
+    x.executionState ===
+    "REBUILD"
+  ) {
+
+    x.trigger =
+      "REBUILD_WATCH";
+
+
+  } else if (
+    x.executionState ===
+    "SHORT_CONTROL"
+  ) {
+
+    x.trigger =
+      "DOWNSIDE_ACTIVE";
+
+
+  } else if (
+    x.executionState ===
+    "SHORT_BUILD"
+  ) {
+
+    x.trigger =
+      "DOWNSIDE_WATCH";
+
+
+  } else if (
+    x.executionState ===
+    "POSITION_BUILD"
+  ) {
+
+    x.trigger =
+      x.isOiSpike
+
+        ? "SPIKE_WAIT"
+
+        : "LOADING";
   }
   if (extended) x.trigger = "NONE";
   // score ranks radar attention, not long conviction; funding only rewards
@@ -1545,10 +2664,13 @@ export default async function handler(
     Date.now();
 
 
-  let oiErrors = 0;
+ let oiErrors = 0;
 
   let klineErrors = 0;
 
+  let flowErrors = 0;
+
+  let flow5mParsedCount = 0;
 
   const errorSamples = [];
 
@@ -2029,6 +3151,14 @@ export default async function handler(
 
               try {
 
+                const scanNow =
+                  Date.now();
+
+
+                // ==============================================
+                // 5M PRICE
+                // ==============================================
+
                 const result =
                   await bybit(
                     "/v5/market/kline",
@@ -2043,8 +3173,10 @@ export default async function handler(
                       interval:
                         "5",
 
+                      // V4.1 needs enough data for
+                      // Price × OI history.
                       limit:
-                        "20",
+                        "30",
                     }
                   );
 
@@ -2052,8 +3184,117 @@ export default async function handler(
                 const kline =
                   parseKline(
                     result.list ||
-                      []
+                      [],
+                    scanNow
                   );
+
+
+                if (!kline) {
+
+                  throw new Error(
+                    "Incomplete or non-contiguous closed 5M kline history"
+                  );
+                }
+
+
+                // ==============================================
+                // V4.1 — 5M OI
+                //
+                // Flow failure must NOT remove an otherwise
+                // valid V4 candidate.
+                // ==============================================
+
+                let flow5m =
+                  null;
+
+
+                try {
+
+                  const oi5mResult =
+                    await bybit(
+                      "/v5/market/open-interest",
+                      {
+
+                        category:
+                          "linear",
+
+                        symbol:
+                          row.symbol,
+
+                        intervalTime:
+                          "5min",
+
+                        limit:
+                          "30",
+                      }
+                    );
+
+
+                  flow5m =
+                    parsePriceOiFlow5m(
+
+                      result.list ||
+                        [],
+
+                      oi5mResult.list ||
+                        [],
+
+                      scanNow
+                    );
+
+
+                  if (flow5m) {
+
+                    flow5mParsedCount++;
+
+                  } else {
+
+                    flowErrors++;
+
+
+                    if (
+                      errorSamples.length <
+                      10
+                    ) {
+
+                      errorSamples.push({
+
+                        stage:
+                          "FLOW5M",
+
+                        symbol:
+                          row.symbol,
+
+                        error:
+                          "Unable to align enough continuous 5M Price/OI samples",
+                      });
+                    }
+                  }
+
+
+                } catch (flowError) {
+
+                  flowErrors++;
+
+
+                  if (
+                    errorSamples.length <
+                    10
+                  ) {
+
+                    errorSamples.push({
+
+                      stage:
+                        "FLOW5M",
+
+                      symbol:
+                        row.symbol,
+
+                      error:
+                        flowError.message,
+                    });
+                  }
+                }
 
 
                 if (!kline) {
@@ -2065,7 +3306,10 @@ export default async function handler(
 
                   ...row,
 
-                  priceSampleAt: kline.priceSampleAt,
+                  flow5m,
+
+                  priceSampleAt:
+                    kline.priceSampleAt,
                   priceStructure: kline.priceStructure,
 
 
@@ -2161,7 +3405,14 @@ export default async function handler(
 
         .filter(
           (item) =>
-            ["POSITION_BUILD", "SHORT_BUILD", "SHORT_CONTROL", "PRICE_REFUSAL"].includes(item.executionState) &&
+            [
+  "POSITION_BUILD",
+  "SHORT_BUILD",
+  "SHORT_CONTROL",
+  "CORRELATION_FLIP",
+  "REBUILD",
+  "PRICE_REFUSAL",
+].includes(item.executionState) &&
             item.executionRisk !== "EXTENDED"
         )
 
@@ -2291,7 +3542,7 @@ export default async function handler(
 
 
         version:
-          "OI-RADAR-V4",
+          "OI-RADAR-V4.1",
 
 
         source:
@@ -2315,9 +3566,15 @@ export default async function handler(
           started,
 
 
-        diagnostics: {
+diagnostics: {
 
-          reductionDeepScannedCount: reductionList.length,
+  reductionDeepScannedCount:
+    reductionList.length,
+
+  flow5mDeepScannedCount:
+    flow5mParsedCount,
+
+  flowErrors,
           executionStateCounts: finalRows.reduce((counts, row) => {
             counts[row.executionState] = (counts[row.executionState] || 0) + 1;
             return counts;
@@ -2373,9 +3630,20 @@ export default async function handler(
         // 主要候选
         // ====================================================
 
-        executionRules: EXECUTION_RULES,
-        scoreMeaning: "Radar attention only; use executionState and directionalBias for direction.",
-        priceWindowBasis: "Completed 5M candles; exact 1/3/12-bar returns and completed-bar volume.",
+        executionRules:
+          EXECUTION_RULES,
+
+        scoreMeaning:
+          "Radar attention only; use executionState and directionalBias for direction.",
+
+        priceWindowBasis:
+          "Completed 5M candles; exact 1/3/12-bar returns and completed-bar volume.",
+
+        flow5mBasis:
+          "Bybit 5min Open Interest aligned with completed 5M contract candles; used for Price×OI state transitions, CORRELATION_FLIP and REBUILD.",
+
+        executionStates:
+          finalRows,
         // Full bounded deep-scan output prevents top-N buckets hiding states.
         executionStates: finalRows,
         shortCovering: finalRows.filter(row => row.executionState === "SHORT_COVERING"),
@@ -2444,7 +3712,7 @@ export default async function handler(
 
 
         version:
-          "OI-RADAR-V4",
+          "OI-RADAR-V4.1",
 
 
         message:
