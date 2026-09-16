@@ -1,22 +1,30 @@
 const BASE = "https://api.bybit.com";
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+
+// ============================================================
+// BYBIT
+// ============================================================
 
 async function bybit(path, params = {}) {
   const qs = new URLSearchParams(params);
   const url = `${BASE}${path}?${qs.toString()}`;
 
-  const r = await fetch(url, {
+  const response = await fetch(url, {
     headers: {
       Accept: "application/json",
-      "User-Agent": "Bybit-OI-Radar/2.0",
+      "User-Agent": "Bybit-OI-Radar/3.0",
     },
   });
 
-  const text = await r.text();
+  const text = await response.text();
 
-  if (!r.ok) {
-    throw new Error(`HTTP ${r.status}: ${text.slice(0, 160)}`);
+  if (!response.ok) {
+    throw new Error(
+      `HTTP ${response.status}: ${text.slice(0, 160)}`
+    );
   }
 
   let data;
@@ -24,125 +32,263 @@ async function bybit(path, params = {}) {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error(`Non JSON: ${text.slice(0, 160)}`);
+    throw new Error(
+      `Non JSON: ${text.slice(0, 160)}`
+    );
   }
 
   if (data.retCode !== 0) {
-    throw new Error(`${data.retCode}: ${data.retMsg}`);
+    throw new Error(
+      `${data.retCode}: ${data.retMsg}`
+    );
   }
 
   return data.result;
 }
 
-function num(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+
+// ============================================================
+// HELPERS
+// ============================================================
+
+function num(value) {
+  const n = Number(value);
+
+  return Number.isFinite(n)
+    ? n
+    : null;
 }
+
 
 function pct(now, old) {
   now = num(now);
   old = num(old);
 
-  if (now === null || old === null || old === 0) return null;
+  if (
+    now === null ||
+    old === null ||
+    old === 0
+  ) {
+    return null;
+  }
 
   return ((now / old) - 1) * 100;
 }
 
-function round(v, d = 2) {
-  if (v === null || !Number.isFinite(v)) return null;
-  return Number(v.toFixed(d));
+
+function round(value, decimals = 2) {
+  if (
+    value === null ||
+    !Number.isFinite(value)
+  ) {
+    return null;
+  }
+
+  return Number(
+    value.toFixed(decimals)
+  );
 }
 
-function avg(arr) {
-  const a = arr.filter(Number.isFinite);
-  if (!a.length) return null;
-  return a.reduce((x, y) => x + y, 0) / a.length;
+
+function avg(values) {
+  const valid =
+    values.filter(Number.isFinite);
+
+  if (!valid.length) {
+    return null;
+  }
+
+  return (
+    valid.reduce(
+      (sum, value) => sum + value,
+      0
+    ) / valid.length
+  );
 }
 
 
 // ============================================================
-// OI
+// OI PARSER
+//
+// IMPORTANT:
+//
+// Bybit App 当前 OI 口径 = singleOpenInterest
+//
+// 不使用 openInterest。
 // ============================================================
 
 function parseOI(list = []) {
-  const rows = [...list]
-    .map((x) => ({
-      ts: Number(x.timestamp),
+  const rows =
+    [...list]
+      .map((item) => ({
+        ts: Number(item.timestamp),
 
-      // ======================================================
-      // 永远只读取 Bybit 单边 OI
-      // ======================================================
-      oi: num(x.singleOpenInterest),
-    }))
-    .filter((x) => Number.isFinite(x.ts) && x.oi !== null)
-    .sort((a, b) => b.ts - a.ts);
+        oi: num(
+          item.singleOpenInterest
+        ),
+      }))
 
-  if (rows.length < 5) return null;
+      .filter(
+        (item) =>
+          Number.isFinite(item.ts) &&
+          item.oi !== null
+      )
 
-  const current = rows[0].oi;
+      .sort(
+        (a, b) =>
+          b.ts - a.ts
+      );
+
+
+  if (rows.length < 5) {
+    return null;
+  }
+
+
+  const current =
+    rows[0].oi;
+
 
   const change = (bars) => {
-    if (rows.length <= bars) return null;
-    return pct(current, rows[bars].oi);
+    if (
+      rows.length <= bars
+    ) {
+      return null;
+    }
+
+    return pct(
+      current,
+      rows[bars].oi
+    );
   };
 
+
+  // ----------------------------------------------------------
+  // 最近四个 15M OI step
+  //
   // oldest -> newest
+  //
+  // 例如：
+  //
+  // [0.2, 0.4, 0.8, 1.3]
+  //
+  // 表示 OI 连续加速建立。
+  // ----------------------------------------------------------
+
   const steps = [];
 
-  for (let i = 4; i >= 1; i--) {
+
+  for (
+    let i = 4;
+    i >= 1;
+    i--
+  ) {
+
     steps.push(
       round(
-        pct(rows[i - 1].oi, rows[i].oi),
+        pct(
+          rows[i - 1].oi,
+          rows[i].oi
+        ),
         2
       )
     );
   }
 
+
   const positiveSteps =
-    steps.filter((x) => x !== null && x > 0).length;
+    steps.filter(
+      (value) =>
+        value !== null &&
+        value > 0
+    ).length;
+
 
   const negativeSteps =
-    steps.filter((x) => x !== null && x < 0).length;
+    steps.filter(
+      (value) =>
+        value !== null &&
+        value < 0
+    ).length;
+
 
   return {
+
     current,
 
-    oi15mPct: round(change(1), 2),
-    oi30mPct: round(change(2), 2),
-    oi1hPct: round(change(4), 2),
+    oi15mPct:
+      round(
+        change(1),
+        2
+      ),
+
+    oi30mPct:
+      round(
+        change(2),
+        2
+      ),
+
+    oi1hPct:
+      round(
+        change(4),
+        2
+      ),
 
     steps,
 
     positiveSteps,
+
     negativeSteps,
   };
 }
 
 
 // ============================================================
-// KLINE
+// KLINE PARSER
 // ============================================================
 
 function parseKline(list = []) {
-  const rows = [...list]
-    .map((x) => ({
-      ts: Number(x[0]),
-      open: num(x[1]),
-      high: num(x[2]),
-      low: num(x[3]),
-      close: num(x[4]),
-      volume: num(x[5]),
-      turnover: num(x[6]),
-    }))
-    .filter((x) => Number.isFinite(x.ts) && x.close !== null)
-    .sort((a, b) => b.ts - a.ts);
+  const rows =
+    [...list]
+      .map((item) => ({
+        ts: Number(item[0]),
+        open: num(item[1]),
+        high: num(item[2]),
+        low: num(item[3]),
+        close: num(item[4]),
+        volume: num(item[5]),
+        turnover: num(item[6]),
+      }))
 
-  if (rows.length < 13) return null;
+      .filter(
+        (item) =>
+          Number.isFinite(item.ts) &&
+          item.close !== null
+      )
 
-  const current = rows[0].close;
+      .sort(
+        (a, b) =>
+          b.ts - a.ts
+      );
+
+
+  if (
+    rows.length < 13
+  ) {
+    return null;
+  }
+
+
+  const current =
+    rows[0].close;
+
 
   const change = (bars) => {
-    if (rows.length <= bars) return null;
+    if (
+      rows.length <= bars
+    ) {
+      return null;
+    }
 
     return pct(
       current,
@@ -150,198 +296,444 @@ function parseKline(list = []) {
     );
   };
 
-  const recent3 =
+
+  // 最近 15M 平均成交量
+  const recentVolume =
     rows
       .slice(0, 3)
-      .map((x) => x.volume)
-      .filter(Number.isFinite);
+      .map(
+        (item) =>
+          item.volume
+      )
+      .filter(
+        Number.isFinite
+      );
 
-  const previous12 =
+
+  // 前约 1H 作为基准
+  const baselineVolume =
     rows
       .slice(3, 15)
-      .map((x) => x.volume)
-      .filter(Number.isFinite);
+      .map(
+        (item) =>
+          item.volume
+      )
+      .filter(
+        Number.isFinite
+      );
 
-  const recentAvg = avg(recent3);
-  const baselineAvg = avg(previous12);
+
+  const recentAverage =
+    avg(recentVolume);
+
+
+  const baselineAverage =
+    avg(baselineVolume);
+
 
   let volumeRatio = null;
 
+
   if (
-    recentAvg !== null &&
-    baselineAvg !== null &&
-    baselineAvg > 0
+    recentAverage !== null &&
+    baselineAverage !== null &&
+    baselineAverage > 0
   ) {
-    volumeRatio = recentAvg / baselineAvg;
+
+    volumeRatio =
+      recentAverage /
+      baselineAverage;
   }
 
-  return {
-    price5mPct: round(change(1), 2),
-    price15mPct: round(change(3), 2),
-    price1hPct: round(change(12), 2),
 
-    volume15mRatio: round(volumeRatio, 2),
+  return {
+
+    price5mPct:
+      round(
+        change(1),
+        2
+      ),
+
+    price15mPct:
+      round(
+        change(3),
+        2
+      ),
+
+    price1hPct:
+      round(
+        change(12),
+        2
+      ),
+
+    volume15mRatio:
+      round(
+        volumeRatio,
+        2
+      ),
   };
 }
 
 
 // ============================================================
-// OI 第一层发现评分
+// DISCOVERY SCORE
 //
-// 注意：
-// Funding 不参与决定是否能进入发现层。
+// 第一层只负责发现 OI 异常。
+//
+// Funding 不决定谁能进入扫描。
 // ============================================================
 
 function discoveryScore(x) {
   let score = 0;
 
-  const oi15 = x.oi15mPct ?? 0;
-  const oi30 = x.oi30mPct ?? 0;
-  const oi1h = x.oi1hPct ?? 0;
 
-  score += Math.max(oi15, 0) * 5;
-  score += Math.max(oi30, 0) * 3;
-  score += Math.max(oi1h, 0) * 4;
+  const oi15 =
+    x.oi15mPct ?? 0;
+
+  const oi30 =
+    x.oi30mPct ?? 0;
+
+  const oi1h =
+    x.oi1hPct ?? 0;
+
+
+  score +=
+    Math.max(
+      oi15,
+      0
+    ) * 5;
+
+
+  score +=
+    Math.max(
+      oi30,
+      0
+    ) * 3;
+
+
+  score +=
+    Math.max(
+      oi1h,
+      0
+    ) * 4;
+
 
   // 连续建仓
-  score += x.positiveSteps * 2;
+  score +=
+    (x.positiveSteps || 0) * 2;
+
 
   // 最新15M突然加速
-  if (oi15 >= 1) score += 5;
-  if (oi15 >= 2) score += 8;
-  if (oi15 >= 4) score += 12;
+  if (oi15 >= 1) {
+    score += 5;
+  }
 
-  // 1H显著异常
-  if (oi1h >= 3) score += 8;
-  if (oi1h >= 5) score += 12;
-  if (oi1h >= 8) score += 18;
+  if (oi15 >= 2) {
+    score += 8;
+  }
 
-  return round(score, 2);
+  if (oi15 >= 4) {
+    score += 12;
+  }
+
+
+  // 1H OI异常
+  if (oi1h >= 3) {
+    score += 8;
+  }
+
+  if (oi1h >= 5) {
+    score += 12;
+  }
+
+  if (oi1h >= 8) {
+    score += 18;
+  }
+
+
+  return round(
+    score,
+    2
+  );
 }
 
 
 // ============================================================
-// 市场状态
+// V3 STATE MACHINE
+//
+// 生命周期：
+//
+// ACCUMULATING
+//      ↓
+// SQUEEZE_READY
+//      ↓
+// TRIGGERING
+//      ↓
+// EXTENDED
+//      ↓
+// UNWINDING
+//
+// 另外：
+//
+// COOLING
+// OI_WATCH
+//
+// 用于处理中间状态。
 // ============================================================
 
 function classify(x) {
-  const oi15 = x.oi15mPct ?? 0;
-  const oi30 = x.oi30mPct ?? 0;
-  const oi1h = x.oi1hPct ?? 0;
 
-  const p5 = x.price5mPct ?? 0;
-  const p15 = x.price15mPct ?? 0;
-  const p1h = x.price1hPct ?? 0;
+  const oi15 =
+    x.oi15mPct ?? 0;
 
-  const vol = x.volume15mRatio ?? 0;
-  const funding = x.fundingRate ?? 0;
+  const oi30 =
+    x.oi30mPct ?? 0;
 
-  const positiveSteps = x.positiveSteps ?? 0;
-  const negativeSteps = x.negativeSteps ?? 0;
+  const oi1h =
+    x.oi1hPct ?? 0;
+
+
+  const p5 =
+    x.price5mPct ?? 0;
+
+  const p15 =
+    x.price15mPct ?? 0;
+
+  const p1h =
+    x.price1hPct ?? 0;
+
+
+  const volume =
+    x.volume15mRatio ?? 0;
+
+
+  const funding =
+    x.fundingRate ?? 0;
+
+
+  const positiveSteps =
+    x.positiveSteps ?? 0;
+
+
+  const negativeSteps =
+    x.negativeSteps ?? 0;
 
 
   // ==========================================================
-  // 1. 已经爆拉
-  // ==========================================================
-
-  if (p1h >= 12) {
-    return "OVEREXTENDED";
-  }
-
-
-  // ==========================================================
-  // 2. OI 正在撤退
+  // EXTENDED
   //
-  // 过去1H可能仍然是正值，
-  // 但最近15M已经明显下降。
+  // 已经明显释放。
   //
-  // TUT 第一波之后这种结构就应该被降级。
+  // 我们找的是早期，
+  // 所以这种状态不再作为主要候选。
   // ==========================================================
 
   if (
-    oi15 <= -0.7 ||
+    p1h >= 12 ||
     (
-      negativeSteps >= 2 &&
-      oi15 < 0
+      p1h >= 8 &&
+      p15 >= 3
     )
   ) {
-    return "OI_UNWIND";
+
+    return "EXTENDED";
   }
 
 
   // ==========================================================
-  // 3. 强 OI 启动
-  // ==========================================================
-
-  if (
-    oi1h >= 5 &&
-    oi15 > 0 &&
-    p1h > -4 &&
-    p1h <= 8 &&
-    vol >= 1.2
-  ) {
-    return "STRONG";
-  }
-
-
-  // ==========================================================
-  // 4. 二次蓄仓 / 重建
+  // UNWINDING
   //
-  // 旧行情不能机械过滤。
-  // 只要出现新的独立 OI 建仓，
-  // 就重新进入观察。
+  // 真正持续撤仓。
+  //
+  // 不能因为一根 -0.1% / -0.2%
+  // 就直接判定撤仓。
+  // ==========================================================
+
+  const hardUnwind =
+    oi15 <= -1.0 &&
+    oi30 <= -1.0;
+
+
+  const persistentUnwind =
+    negativeSteps >= 3 &&
+    oi15 <= -0.5 &&
+    oi30 < 0;
+
+
+  const fullUnwind =
+    oi15 < 0 &&
+    oi30 < 0 &&
+    oi1h < 0 &&
+    negativeSteps >= 2;
+
+
+  if (
+    hardUnwind ||
+    persistentUnwind ||
+    fullUnwind
+  ) {
+
+    return "UNWINDING";
+  }
+
+
+  // ==========================================================
+  // COOLING
+  //
+  // 中周期 OI 仍然很强，
+  // 但最新15M轻微回吐。
+  //
+  // 例如：
+  //
+  // 15M -0.18%
+  // 30M +12%
+  // 1H  +12%
+  //
+  // 这种不能判 UNWINDING。
   // ==========================================================
 
   if (
-    oi30 >= 1.5 &&
-    oi15 >= 0.5 &&
+    oi15 < 0 &&
+    oi15 > -1.0 &&
+    (
+      oi30 >= 2 ||
+      oi1h >= 3
+    )
+  ) {
+
+    return "COOLING";
+  }
+
+
+  // ==========================================================
+  // TRIGGERING
+  //
+  // OI 已经建立
+  // +
+  // 价格开始动
+  // +
+  // 成交量开始放大
+  //
+  // Funding 不作为必要条件。
+  // ==========================================================
+
+  const oiEstablished =
+    oi15 >= 0.3 &&
+    (
+      oi30 >= 1 ||
+      oi1h >= 2 ||
+      positiveSteps >= 3
+    );
+
+
+  const priceTrigger =
+    p5 >= 0.25 &&
+    p15 > 0;
+
+
+  const volumeTrigger =
+    volume >= 1.2;
+
+
+  if (
+    oiEstablished &&
+    priceTrigger &&
+    volumeTrigger &&
+    p1h < 8
+  ) {
+
+    return "TRIGGERING";
+  }
+
+
+  // ==========================================================
+  // SQUEEZE_READY
+  //
+  // OI 已经建立
+  // +
+  // Funding 明显负
+  // +
+  // 价格尚未释放
+  //
+  // 这是我们非常关注的状态。
+  // ==========================================================
+
+  const squeezeOI =
+    (
+      oi15 >= 0.5 ||
+      oi30 >= 2 ||
+      oi1h >= 3
+    ) &&
+    positiveSteps >= 2;
+
+
+  const priceNotReleased =
+    p1h > -5 &&
+    p1h <= 5;
+
+
+  if (
+    squeezeOI &&
+    funding <= -0.0005 &&
+    priceNotReleased
+  ) {
+
+    return "SQUEEZE_READY";
+  }
+
+
+  // ==========================================================
+  // ACCUMULATING
+  //
+  // OI先动，价格还没明显动。
+  //
+  // 不机械要求 1H OI >= 5%。
+  //
+  // 连续15M建仓也可以进入。
+  // ==========================================================
+
+  const sustainedBuild =
     positiveSteps >= 3 &&
-    p1h <= 6
-  ) {
-    return "REBUILD";
-  }
+    oi1h >= 0.5;
 
 
-  // ==========================================================
-  // 5. PRE WATCH
-  //
-  // 连续小幅建立 OI，
-  // 即使1H没有达到 +5%。
-  // ==========================================================
-
-  if (
+  const acceleratedBuild =
     oi15 >= 0.5 &&
-    positiveSteps >= 3 &&
-    p1h > -4 &&
-    p1h <= 6
+    oi30 >= 1;
+
+
+  const strongHourlyBuild =
+    oi1h >= 3 &&
+    oi15 >= 0;
+
+
+  if (
+    (
+      sustainedBuild ||
+      acceleratedBuild ||
+      strongHourlyBuild
+    ) &&
+    p1h > -5 &&
+    p1h <= 5
   ) {
-    return "PRE_WATCH";
+
+    return "ACCUMULATING";
   }
 
 
   // ==========================================================
-  // 6. SQUEEZE WATCH
+  // OI_WATCH
   //
-  // 极端负 Funding + OI 正增长
+  // 有异常，
+  // 但尚未形成足够完整的启动结构。
   // ==========================================================
 
   if (
-    funding <= -0.001 &&
-    oi15 > 0 &&
-    p1h <= 8
+    oi1h >= 2 ||
+    oi30 >= 1 ||
+    oi15 >= 0.5
   ) {
-    return "SQUEEZE_WATCH";
-  }
 
-
-  // ==========================================================
-  // 7. 普通 OI 异常
-  // ==========================================================
-
-  if (
-    oi1h >= 3 ||
-    oi15 >= 1
-  ) {
     return "OI_WATCH";
   }
 
@@ -351,92 +743,387 @@ function classify(x) {
 
 
 // ============================================================
-// 5M Trigger
+// 5M TRIGGER DETAIL
+//
+// signal：中周期状态
+//
+// trigger：当前短周期是否正在点火
 // ============================================================
 
 function triggerState(x) {
-  const p5 = x.price5mPct ?? 0;
-  const p15 = x.price15mPct ?? 0;
-  const oi15 = x.oi15mPct ?? 0;
-  const vol = x.volume15mRatio ?? 0;
 
-  // 开始放量 + 价格开始转强
+  const p5 =
+    x.price5mPct ?? 0;
+
+
+  const p15 =
+    x.price15mPct ?? 0;
+
+
+  const oi15 =
+    x.oi15mPct ?? 0;
+
+
+  const oi30 =
+    x.oi30mPct ?? 0;
+
+
+  const volume =
+    x.volume15mRatio ?? 0;
+
+
+  // ==========================================================
+  // ACTIVE
+  //
+  // OI继续增加
+  // + 5M价格明显转强
+  // + 15M价格为正
+  // + 成交量明显放大
+  // ==========================================================
+
   if (
     oi15 > 0 &&
-    p5 > 0.3 &&
+    p5 >= 0.3 &&
     p15 > 0 &&
-    vol >= 1.5
+    volume >= 1.5
   ) {
-    return "TRIGGERING";
-  }
 
-  // OI已经建，但价格还没动
-  if (
-    oi15 > 0 &&
-    Math.abs(p5) <= 0.5 &&
-    vol < 1.5
-  ) {
-    return "WAITING";
-  }
-
-  // 有量，但方向还没确认
-  if (
-    oi15 > 0 &&
-    vol >= 1.5
-  ) {
     return "ACTIVE";
   }
+
+
+  // ==========================================================
+  // EARLY
+  //
+  // 刚开始点火。
+  // ==========================================================
+
+  if (
+    oi15 > 0 &&
+    p5 > 0.15 &&
+    p15 >= 0 &&
+    volume >= 1.1
+  ) {
+
+    return "EARLY";
+  }
+
+
+  // ==========================================================
+  // LOADING
+  //
+  // OI明显建立，
+  // 但价格基本没动。
+  //
+  // 这是雷达最希望提前发现的状态之一。
+  // ==========================================================
+
+  if (
+    (
+      oi15 >= 0.5 ||
+      oi30 >= 1
+    ) &&
+    Math.abs(p5) <= 0.5 &&
+    volume < 1.5
+  ) {
+
+    return "LOADING";
+  }
+
+
+  // ==========================================================
+  // VOLUME_ONLY
+  //
+  // 有量，
+  // 但价格方向尚未确认。
+  // ==========================================================
+
+  if (
+    oi15 > 0 &&
+    volume >= 1.5
+  ) {
+
+    return "VOLUME_ONLY";
+  }
+
 
   return "NONE";
 }
 
 
 // ============================================================
-// 最终评分
+// FINAL SCORE
+//
+// Score只负责排序。
+//
+// State负责解释市场结构。
 // ============================================================
 
 function finalScore(x) {
-  let s = x.discoveryScore || 0;
 
-  const funding = x.fundingRate ?? 0;
-  const volume = x.volume15mRatio ?? 1;
-  const p1h = x.price1hPct ?? 0;
+  let score = 0;
 
-  // Funding只是加权
-  if (funding < 0) {
-    s += Math.min(
-      Math.abs(funding) * 10000,
-      20
-    );
+
+  const oi15 =
+    x.oi15mPct ?? 0;
+
+
+  const oi30 =
+    x.oi30mPct ?? 0;
+
+
+  const oi1h =
+    x.oi1hPct ?? 0;
+
+
+  const funding =
+    x.fundingRate ?? 0;
+
+
+  const volume =
+    x.volume15mRatio ?? 0;
+
+
+  const p5 =
+    x.price5mPct ?? 0;
+
+
+  const p15 =
+    x.price15mPct ?? 0;
+
+
+  const p1h =
+    x.price1hPct ?? 0;
+
+
+  // ==========================================================
+  // OI
+  //
+  // 设置上限，
+  // 防止某个极端 OI 数值完全统治排行榜。
+  // ==========================================================
+
+  score += Math.min(
+    Math.max(oi15, 0) * 4,
+    15
+  );
+
+
+  score += Math.min(
+    Math.max(oi30, 0) * 2,
+    15
+  );
+
+
+  score += Math.min(
+    Math.max(oi1h, 0) * 2.5,
+    25
+  );
+
+
+  // ==========================================================
+  // OI 连续性
+  // ==========================================================
+
+  if (
+    x.positiveSteps >= 3
+  ) {
+    score += 8;
   }
 
-  // 量能
-  if (volume > 1) {
-    s += Math.min(
-      (volume - 1) * 8,
-      15
-    );
+
+  if (
+    x.positiveSteps === 4
+  ) {
+    score += 5;
   }
 
-  // 5M trigger
-  if (x.trigger === "TRIGGERING") s += 15;
-  if (x.trigger === "ACTIVE") s += 8;
 
-  // 连续建仓
-  if (x.positiveSteps >= 3) s += 5;
-  if (x.positiveSteps === 4) s += 5;
+  // ==========================================================
+  // FUNDING
+  //
+  // 只作为增强项。
+  // ==========================================================
 
-  // 已经涨太多，降低早期价值
-  if (p1h > 5) s -= 8;
-  if (p1h > 8) s -= 15;
-  if (p1h > 12) s -= 30;
-
-  // OI撤退重罚
-  if (x.signal === "OI_UNWIND") {
-    s -= 40;
+  if (
+    funding <= -0.0005
+  ) {
+    score += 5;
   }
 
-  return round(s, 1);
+
+  if (
+    funding <= -0.001
+  ) {
+    score += 7;
+  }
+
+
+  if (
+    funding <= -0.003
+  ) {
+    score += 5;
+  }
+
+
+  // ==========================================================
+  // VOLUME
+  // ==========================================================
+
+  if (
+    volume >= 1.1
+  ) {
+    score += 4;
+  }
+
+
+  if (
+    volume >= 1.5
+  ) {
+    score += 6;
+  }
+
+
+  if (
+    volume >= 2
+  ) {
+    score += 5;
+  }
+
+
+  // ==========================================================
+  // TRIGGER
+  // ==========================================================
+
+  if (
+    x.trigger === "EARLY"
+  ) {
+    score += 8;
+  }
+
+
+  if (
+    x.trigger === "ACTIVE"
+  ) {
+    score += 15;
+  }
+
+
+  if (
+    x.trigger === "LOADING"
+  ) {
+    score += 5;
+  }
+
+
+  // ==========================================================
+  // STATE
+  // ==========================================================
+
+  if (
+    x.signal === "ACCUMULATING"
+  ) {
+    score += 12;
+  }
+
+
+  if (
+    x.signal === "SQUEEZE_READY"
+  ) {
+    score += 18;
+  }
+
+
+  if (
+    x.signal === "TRIGGERING"
+  ) {
+    score += 22;
+  }
+
+
+  if (
+    x.signal === "COOLING"
+  ) {
+    score -= 8;
+  }
+
+
+  if (
+    x.signal === "EXTENDED"
+  ) {
+    score -= 30;
+  }
+
+
+  if (
+    x.signal === "UNWINDING"
+  ) {
+    score -= 45;
+  }
+
+
+  // ==========================================================
+  // EARLY PRICE POSITION
+  //
+  // 奖励：
+  //
+  // OI先动
+  // 价格还没明显动
+  // ==========================================================
+
+  if (
+    p1h >= -1 &&
+    p1h <= 3
+  ) {
+    score += 8;
+  }
+
+
+  if (
+    p15 >= 0 &&
+    p15 <= 1.5
+  ) {
+    score += 4;
+  }
+
+
+  if (
+    p5 > 0 &&
+    p5 <= 0.8
+  ) {
+    score += 3;
+  }
+
+
+  // ==========================================================
+  // PRICE ALREADY MOVED
+  // ==========================================================
+
+  if (
+    p1h > 5
+  ) {
+    score -= 8;
+  }
+
+
+  if (
+    p1h > 8
+  ) {
+    score -= 15;
+  }
+
+
+  if (
+    p1h > 12
+  ) {
+    score -= 30;
+  }
+
+
+  return round(
+    score,
+    1
+  );
 }
 
 
@@ -444,453 +1131,942 @@ function finalScore(x) {
 // MAIN
 // ============================================================
 
-export default async function handler(req, res) {
-  const started = Date.now();
+export default async function handler(
+  req,
+  res
+) {
+
+  const started =
+    Date.now();
+
 
   let oiErrors = 0;
+
   let klineErrors = 0;
 
+
   const errorSamples = [];
+
 
   try {
 
     // ========================================================
-    // ① TICKERS
+    // 1. TICKERS
     // ========================================================
 
-    const tickerResult = await bybit(
-      "/v5/market/tickers",
-      {
-        category: "linear",
-      }
-    );
+    const tickerResult =
+      await bybit(
+        "/v5/market/tickers",
+        {
+          category: "linear",
+        }
+      );
 
-    const tickers = tickerResult.list || [];
+
+    const tickers =
+      tickerResult.list || [];
 
 
     // ========================================================
-    // ② INSTRUMENTS
+    // 2. INSTRUMENTS
     // ========================================================
 
     let instruments = [];
+
     let cursor = "";
 
+
     do {
+
       const params = {
-        category: "linear",
-        limit: "1000",
+
+        category:
+          "linear",
+
+        limit:
+          "1000",
       };
 
+
       if (cursor) {
-        params.cursor = cursor;
+
+        params.cursor =
+          cursor;
       }
 
-      const result = await bybit(
-        "/v5/market/instruments-info",
-        params
+
+      const result =
+        await bybit(
+          "/v5/market/instruments-info",
+          params
+        );
+
+
+      instruments.push(
+        ...(result.list || [])
       );
 
-      instruments.push(...(result.list || []));
 
-      cursor = result.nextPageCursor || "";
+      cursor =
+        result.nextPageCursor ||
+        "";
+
 
     } while (cursor);
 
 
     // ========================================================
-    // ③ 只保留 Bybit USDT Linear Perpetual
+    // 3. BYBIT USDT LINEAR PERPETUAL ONLY
     // ========================================================
 
-    const allowed = new Set(
-      instruments
-        .filter(
-          (x) =>
-            x.status === "Trading" &&
-            x.contractType === "LinearPerpetual" &&
-            x.quoteCoin === "USDT"
-        )
-        .map((x) => x.symbol)
-    );
+    const allowed =
+      new Set(
 
+        instruments
 
-    const universe = tickers
-      .filter((x) => allowed.has(x.symbol))
-      .map((x) => ({
-        symbol: x.symbol,
+          .filter(
+            (item) =>
+              item.status ===
+                "Trading" &&
 
-        price: num(x.lastPrice),
+              item.contractType ===
+                "LinearPerpetual" &&
 
-        price24hPct:
-          num(x.price24hPcnt) !== null
-            ? num(x.price24hPcnt) * 100
-            : null,
+              item.quoteCoin ===
+                "USDT"
+          )
 
-        turnover24h:
-          num(x.turnover24h),
-
-        fundingRate:
-          num(x.fundingRate),
-
-        tickerSingleOI:
-          num(x.singleOpenInterest),
-      }))
-      .filter(
-        (x) =>
-          x.price !== null &&
-          x.turnover24h !== null &&
-          x.turnover24h >= 500000
+          .map(
+            (item) =>
+              item.symbol
+          )
       );
 
 
     // ========================================================
-    // ④ DISCOVERY
+    // MARKET UNIVERSE
+    // ========================================================
+
+    const universe =
+      tickers
+
+        .filter(
+          (item) =>
+            allowed.has(
+              item.symbol
+            )
+        )
+
+        .map(
+          (item) => ({
+
+            symbol:
+              item.symbol,
+
+
+            price:
+              num(
+                item.lastPrice
+              ),
+
+
+            price24hPct:
+              num(
+                item.price24hPcnt
+              ) !== null
+
+                ? num(
+                    item.price24hPcnt
+                  ) * 100
+
+                : null,
+
+
+            turnover24h:
+              num(
+                item.turnover24h
+              ),
+
+
+            fundingRate:
+              num(
+                item.fundingRate
+              ),
+
+
+            // ================================================
+            // 当前 ticker 单边 OI
+            // ================================================
+
+            tickerSingleOI:
+              num(
+                item.singleOpenInterest
+              ),
+          })
+        )
+
+
+        // ====================================================
+        // 流动性过滤
+        //
+        // 暂时保持 V2 的 500k USDT 24H turnover。
+        // ====================================================
+
+        .filter(
+          (item) =>
+            item.price !== null &&
+            item.turnover24h !== null &&
+            item.turnover24h >=
+              500000
+        );
+
+
+    // ========================================================
+    // 4. FULL MARKET OI DISCOVERY
     //
-    // 全市场查 OI
+    // 所有 universe 全部查 OI。
     //
-    // 这里不看 Funding 排名。
+    // Funding 不参与决定谁能被发现。
     // ========================================================
 
     const oiRows = [];
 
-    for (let i = 0; i < universe.length; i += 15) {
 
-      const batch = universe.slice(i, i + 15);
+    for (
+      let i = 0;
+      i < universe.length;
+      i += 15
+    ) {
 
-      const data = await Promise.all(
-        batch.map(async (ticker) => {
+      const batch =
+        universe.slice(
+          i,
+          i + 15
+        );
 
-          try {
 
-            const result = await bybit(
-              "/v5/market/open-interest",
-              {
-                category: "linear",
-                symbol: ticker.symbol,
-                intervalTime: "15min",
-                limit: "8",
+      const data =
+        await Promise.all(
+
+          batch.map(
+            async (ticker) => {
+
+              try {
+
+                const result =
+                  await bybit(
+                    "/v5/market/open-interest",
+                    {
+
+                      category:
+                        "linear",
+
+                      symbol:
+                        ticker.symbol,
+
+                      intervalTime:
+                        "15min",
+
+                      limit:
+                        "8",
+                    }
+                  );
+
+
+                const oi =
+                  parseOI(
+                    result.list ||
+                      []
+                  );
+
+
+                if (!oi) {
+                  return null;
+                }
+
+
+                const row = {
+
+                  ...ticker,
+
+
+                  // ==========================================
+                  // Bybit App calibrated single-sided OI
+                  // ==========================================
+
+                  singleOpenInterest:
+                    oi.current,
+
+
+                  oi15mPct:
+                    oi.oi15mPct,
+
+
+                  oi30mPct:
+                    oi.oi30mPct,
+
+
+                  oi1hPct:
+                    oi.oi1hPct,
+
+
+                  oi15mSteps:
+                    oi.steps,
+
+
+                  positiveSteps:
+                    oi.positiveSteps,
+
+
+                  negativeSteps:
+                    oi.negativeSteps,
+                };
+
+
+                row.discoveryScore =
+                  discoveryScore(
+                    row
+                  );
+
+
+                return row;
+
+
+              } catch (error) {
+
+                oiErrors++;
+
+
+                if (
+                  errorSamples.length <
+                  10
+                ) {
+
+                  errorSamples.push({
+
+                    stage:
+                      "OI",
+
+                    symbol:
+                      ticker.symbol,
+
+                    error:
+                      error.message,
+                  });
+                }
+
+
+                return null;
               }
-            );
-
-            const oi = parseOI(result.list || []);
-
-            if (!oi) return null;
-
-            const row = {
-              ...ticker,
-
-              singleOpenInterest:
-                oi.current,
-
-              oi15mPct:
-                oi.oi15mPct,
-
-              oi30mPct:
-                oi.oi30mPct,
-
-              oi1hPct:
-                oi.oi1hPct,
-
-              oi15mSteps:
-                oi.steps,
-
-              positiveSteps:
-                oi.positiveSteps,
-
-              negativeSteps:
-                oi.negativeSteps,
-            };
-
-            row.discoveryScore =
-              discoveryScore(row);
-
-            return row;
-
-          } catch (e) {
-
-            oiErrors++;
-
-            if (errorSamples.length < 10) {
-              errorSamples.push({
-                stage: "OI",
-                symbol: ticker.symbol,
-                error: e.message,
-              });
             }
+          )
+        );
 
-            return null;
-          }
-        })
+
+      oiRows.push(
+        ...data.filter(Boolean)
       );
 
-      oiRows.push(...data.filter(Boolean));
 
       await sleep(80);
     }
 
 
     // ========================================================
-    // ⑤ OI 异常发现
+    // 5. OI ANOMALY DISCOVERY
     //
-    // 不机械要求1H >= 5%
+    // 不机械要求 1H >= 5%。
+    //
+    // 连续15M小幅建立也可以进入。
     // ========================================================
 
-    const oiCandidates = oiRows
-      .filter((x) => {
+    const oiCandidates =
+      oiRows
 
-        const oi15 = x.oi15mPct ?? 0;
-        const oi30 = x.oi30mPct ?? 0;
-        const oi1h = x.oi1hPct ?? 0;
+        .filter(
+          (item) => {
 
-        const funding = x.fundingRate ?? 0;
+            const oi15 =
+              item.oi15mPct ??
+              0;
 
-        // 明显 OI 异常
-        if (oi1h >= 2) return true;
 
-        if (oi30 >= 1) return true;
+            const oi30 =
+              item.oi30mPct ??
+              0;
 
-        if (oi15 >= 0.5) return true;
 
-        // 连续小幅建仓
-        if (
-          x.positiveSteps >= 3 &&
-          oi1h > 0.5
-        ) {
-          return true;
-        }
+            const oi1h =
+              item.oi1hPct ??
+              0;
 
-        // 极端负 Funding + OI 正增长
-        if (
-          funding <= -0.001 &&
-          oi15 > 0
-        ) {
-          return true;
-        }
 
-        return false;
-      })
-      .sort(
-        (a, b) =>
-          (b.discoveryScore || 0) -
-          (a.discoveryScore || 0)
-      );
+            const funding =
+              item.fundingRate ??
+              0;
+
+
+            // ================================================
+            // 1H OI anomaly
+            // ================================================
+
+            if (
+              oi1h >= 2
+            ) {
+              return true;
+            }
+
+
+            // ================================================
+            // 30M OI anomaly
+            // ================================================
+
+            if (
+              oi30 >= 1
+            ) {
+              return true;
+            }
+
+
+            // ================================================
+            // 15M sudden OI build
+            // ================================================
+
+            if (
+              oi15 >= 0.5
+            ) {
+              return true;
+            }
+
+
+            // ================================================
+            // 连续小幅 OI build
+            // ================================================
+
+            if (
+              item.positiveSteps >=
+                3 &&
+              oi1h > 0.5
+            ) {
+              return true;
+            }
+
+
+            // ================================================
+            // 极端负 Funding
+            // +
+            // OI 正增长
+            //
+            // Funding只是辅助进入。
+            // ================================================
+
+            if (
+              funding <=
+                -0.001 &&
+              oi15 > 0
+            ) {
+              return true;
+            }
+
+
+            return false;
+          }
+        )
+
+
+        .sort(
+          (a, b) =>
+            (
+              b.discoveryScore ||
+              0
+            ) -
+            (
+              a.discoveryScore ||
+              0
+            )
+        );
 
 
     // ========================================================
-    // ⑥ KLINE 深度确认
+    // 6. KLINE DEEP SCAN
     //
-    // 最多检查 OI 异常最高的80个
+    // 最多80个 OI 异常标的。
     // ========================================================
 
     const deepList =
-      oiCandidates.slice(0, 80);
+      oiCandidates.slice(
+        0,
+        80
+      );
+
 
     const finalRows = [];
 
 
-    for (let i = 0; i < deepList.length; i += 10) {
+    for (
+      let i = 0;
+      i < deepList.length;
+      i += 10
+    ) {
 
-      const batch = deepList.slice(i, i + 10);
+      const batch =
+        deepList.slice(
+          i,
+          i + 10
+        );
 
-      const data = await Promise.all(
-        batch.map(async (row) => {
 
-          try {
+      const data =
+        await Promise.all(
 
-            const result = await bybit(
-              "/v5/market/kline",
-              {
-                category: "linear",
-                symbol: row.symbol,
-                interval: "5",
-                limit: "20",
+          batch.map(
+            async (row) => {
+
+              try {
+
+                const result =
+                  await bybit(
+                    "/v5/market/kline",
+                    {
+
+                      category:
+                        "linear",
+
+                      symbol:
+                        row.symbol,
+
+                      interval:
+                        "5",
+
+                      limit:
+                        "20",
+                    }
+                  );
+
+
+                const kline =
+                  parseKline(
+                    result.list ||
+                      []
+                  );
+
+
+                if (!kline) {
+                  return null;
+                }
+
+
+                const item = {
+
+                  ...row,
+
+
+                  // ==========================================
+                  // PRICE
+                  // ==========================================
+
+                  price5mPct:
+                    kline.price5mPct,
+
+
+                  price15mPct:
+                    kline.price15mPct,
+
+
+                  price1hPct:
+                    kline.price1hPct,
+
+
+                  price24hPct:
+                    round(
+                      row.price24hPct,
+                      2
+                    ),
+
+
+                  // ==========================================
+                  // VOLUME
+                  // ==========================================
+
+                  volume15mRatio:
+                    kline.volume15mRatio,
+
+
+                  // ==========================================
+                  // FUNDING
+                  // ==========================================
+
+                  fundingPct:
+                    row.fundingRate !==
+                    null
+
+                      ? round(
+                          row.fundingRate *
+                            100,
+                          4
+                        )
+
+                      : null,
+                };
+
+
+                // ============================================
+                // V3 STATE
+                // ============================================
+
+                item.signal =
+                  classify(
+                    item
+                  );
+
+
+                // ============================================
+                // 5M TRIGGER
+                // ============================================
+
+                item.trigger =
+                  triggerState(
+                    item
+                  );
+
+
+                // ============================================
+                // RANKING
+                // ============================================
+
+                item.score =
+                  finalScore(
+                    item
+                  );
+
+
+                return item;
+
+
+              } catch (error) {
+
+                klineErrors++;
+
+
+                if (
+                  errorSamples.length <
+                  10
+                ) {
+
+                  errorSamples.push({
+
+                    stage:
+                      "KLINE",
+
+                    symbol:
+                      row.symbol,
+
+                    error:
+                      error.message,
+                  });
+                }
+
+
+                return null;
               }
-            );
-
-            const k =
-              parseKline(result.list || []);
-
-            if (!k) return null;
-
-            const x = {
-              ...row,
-
-              price5mPct:
-                k.price5mPct,
-
-              price15mPct:
-                k.price15mPct,
-
-              price1hPct:
-                k.price1hPct,
-
-              volume15mRatio:
-                k.volume15mRatio,
-
-              fundingPct:
-                row.fundingRate !== null
-                  ? round(row.fundingRate * 100, 4)
-                  : null,
-
-              price24hPct:
-                round(row.price24hPct, 2),
-            };
-
-
-            x.signal =
-              classify(x);
-
-
-            x.trigger =
-              triggerState(x);
-
-
-            x.score =
-              finalScore(x);
-
-
-            return x;
-
-          } catch (e) {
-
-            klineErrors++;
-
-            if (errorSamples.length < 10) {
-              errorSamples.push({
-                stage: "KLINE",
-                symbol: row.symbol,
-                error: e.message,
-              });
             }
+          )
+        );
 
-            return null;
-          }
-        })
+
+      finalRows.push(
+        ...data.filter(Boolean)
       );
 
-      finalRows.push(...data.filter(Boolean));
 
       await sleep(80);
     }
 
 
     // ========================================================
-    // ⑦ 排除明显无效状态
+    // 7. ACTIONABLE
     //
-    // 但 diagnostics 仍然保留统计
+    // EXTENDED / UNWINDING 不进入主要候选。
+    //
+    // COOLING 暂时保留，
+    // 方便我们观察二次蓄仓。
     // ========================================================
 
-    const actionable = finalRows
-      .filter(
-        (x) =>
-          x.signal &&
-          x.signal !== "OVEREXTENDED" &&
-          x.signal !== "OI_UNWIND"
-      )
-      .sort(
-        (a, b) =>
-          (b.score || 0) -
-          (a.score || 0)
-      );
+    const actionable =
+      finalRows
 
+        .filter(
+          (item) =>
+            item.signal &&
+            item.signal !==
+              "EXTENDED" &&
+            item.signal !==
+              "UNWINDING"
+        )
 
-    const unwind = finalRows
-      .filter(
-        (x) =>
-          x.signal === "OI_UNWIND"
-      )
-      .sort(
-        (a, b) =>
-          (b.discoveryScore || 0) -
-          (a.discoveryScore || 0)
-      );
+        .sort(
+          (a, b) =>
+            (
+              b.score ||
+              0
+            ) -
+            (
+              a.score ||
+              0
+            )
+        );
 
 
     // ========================================================
-    // ⑧ OUTPUT
+    // 8. UNWINDING
+    //
+    // 专门监控 OI 真正撤退。
+    //
+    // TUT 第一波结束类型应该更容易出现在这里。
     // ========================================================
 
-    return res.status(200).json({
+    const unwind =
+      finalRows
 
-      status: "ok",
+        .filter(
+          (item) =>
+            item.signal ===
+              "UNWINDING"
+        )
 
-      version: "OI-RADAR-V2",
-
-      source:
-        "Bybit Official API",
-
-      market:
-        "Bybit USDT Linear Perpetual",
-
-      oiDefinition:
-        "singleOpenInterest",
-
-      scannedAt:
-        new Date().toISOString(),
-
-      durationMs:
-        Date.now() - started,
-
-
-      diagnostics: {
-
-        universeCount:
-          universe.length,
-
-        oiScannedCount:
-          oiRows.length,
-
-        oiCandidateCount:
-          oiCandidates.length,
-
-        klineDeepScannedCount:
-          deepList.length,
-
-        oiErrors,
-
-        klineErrors,
-
-        errorSamples,
-      },
+        .sort(
+          (a, b) =>
+            (
+              b.discoveryScore ||
+              0
+            ) -
+            (
+              a.discoveryScore ||
+              0
+            )
+        );
 
 
-      // ==============================================
-      // 最值得看的前20
-      // ==============================================
+    // ========================================================
+    // 9. EXTENDED
+    //
+    // 已经明显释放的标的单独输出，
+    // 防止它们污染早期候选榜。
+    // ========================================================
 
-      candidates:
-        actionable.slice(0, 20),
+    const extended =
+      finalRows
+
+        .filter(
+          (item) =>
+            item.signal ===
+              "EXTENDED"
+        )
+
+        .sort(
+          (a, b) =>
+            (
+              b.discoveryScore ||
+              0
+            ) -
+            (
+              a.discoveryScore ||
+              0
+            )
+        );
 
 
-      // ==============================================
-      // OI正在撤退
-      //
-      // 用于验证 TUT 这类第一波结束结构
-      // ==============================================
+    // ========================================================
+    // 10. COOLING
+    //
+    // 强 OI 建仓后出现轻微回吐。
+    //
+    // 用于观察是否形成二次蓄仓。
+    // ========================================================
 
-      oiUnwind:
-        unwind.slice(0, 10),
+    const cooling =
+      finalRows
 
-    });
+        .filter(
+          (item) =>
+            item.signal ===
+              "COOLING"
+        )
 
-  } catch (e) {
+        .sort(
+          (a, b) =>
+            (
+              b.score ||
+              0
+            ) -
+            (
+              a.score ||
+              0
+            )
+        );
 
-    return res.status(500).json({
 
-      status: "error",
+    // ========================================================
+    // OUTPUT
+    // ========================================================
 
-      version: "OI-RADAR-V2",
+    return res
+      .status(200)
+      .json({
 
-      message:
-        e.message,
+        status:
+          "ok",
 
-      durationMs:
-        Date.now() - started,
 
-      diagnostics: {
-        oiErrors,
-        klineErrors,
-        errorSamples,
-      },
-    });
+        version:
+          "OI-RADAR-V3",
+
+
+        source:
+          "Bybit Official API",
+
+
+        market:
+          "Bybit USDT Linear Perpetual",
+
+
+        oiDefinition:
+          "singleOpenInterest",
+
+
+        scannedAt:
+          new Date().toISOString(),
+
+
+        durationMs:
+          Date.now() -
+          started,
+
+
+        // ====================================================
+        // DIAGNOSTICS
+        // ====================================================
+
+        diagnostics: {
+
+          universeCount:
+            universe.length,
+
+
+          oiScannedCount:
+            oiRows.length,
+
+
+          oiCandidateCount:
+            oiCandidates.length,
+
+
+          klineDeepScannedCount:
+            deepList.length,
+
+
+          actionableCount:
+            actionable.length,
+
+
+          unwindCount:
+            unwind.length,
+
+
+          extendedCount:
+            extended.length,
+
+
+          coolingCount:
+            cooling.length,
+
+
+          oiErrors,
+
+
+          klineErrors,
+
+
+          errorSamples,
+        },
+
+
+        // ====================================================
+        // EARLY / ACTIONABLE CANDIDATES
+        // ====================================================
+
+        candidates:
+          actionable.slice(
+            0,
+            20
+          ),
+
+
+        // ====================================================
+        // OI COOLING
+        // ====================================================
+
+        cooling:
+          cooling.slice(
+            0,
+            10
+          ),
+
+
+        // ====================================================
+        // OI UNWINDING
+        // ====================================================
+
+        oiUnwind:
+          unwind.slice(
+            0,
+            10
+          ),
+
+
+        // ====================================================
+        // ALREADY EXTENDED
+        // ====================================================
+
+        extended:
+          extended.slice(
+            0,
+            10
+          ),
+      });
+
+
+  } catch (error) {
+
+    return res
+      .status(500)
+      .json({
+
+        status:
+          "error",
+
+
+        version:
+          "OI-RADAR-V3",
+
+
+        message:
+          error.message,
+
+
+        durationMs:
+          Date.now() -
+          started,
+
+
+        diagnostics: {
+
+          oiErrors,
+
+          klineErrors,
+
+          errorSamples,
+        },
+      });
   }
 }
