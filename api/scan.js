@@ -15,7 +15,7 @@ async function bybit(path, params = {}) {
   const response = await fetch(url, {
     headers: {
       Accept: "application/json",
-      "User-Agent": "Bybit-OI-Radar/3.0",
+      "User-Agent": "Bybit-OI-Radar/3.1",
     },
   });
 
@@ -108,39 +108,40 @@ function avg(values) {
 
 
 // ============================================================
-// OI PARSER
+// OI PARSER — V3.1
 //
-// IMPORTANT:
+// Bybit App 当前 OI 口径：
+// singleOpenInterest
 //
-// Bybit App 当前 OI 口径 = singleOpenInterest
-//
-// 不使用 openInterest。
+// 新增：
+// 15M / 30M / 1H / 2H
+// buildQuality
+// consecutivePositive
+// latestStep
+// maxPositiveStep
+// spikeRatio
+// isOiSpike
 // ============================================================
 
 function parseOI(list = []) {
-  const rows =
-    [...list]
-      .map((item) => ({
-        ts: Number(item.timestamp),
-
-        oi: num(
-          item.singleOpenInterest
-        ),
-      }))
-
-      .filter(
-        (item) =>
-          Number.isFinite(item.ts) &&
-          item.oi !== null
-      )
-
-      .sort(
-        (a, b) =>
-          b.ts - a.ts
-      );
+  const rows = [...list]
+    .map((item) => ({
+      ts: Number(item.timestamp),
+      oi: num(item.singleOpenInterest),
+    }))
+    .filter(
+      (item) =>
+        Number.isFinite(item.ts) &&
+        item.oi !== null
+    )
+    .sort(
+      (a, b) =>
+        b.ts - a.ts
+    );
 
 
-  if (rows.length < 5) {
+  // current + 8 * 15M = 2H
+  if (rows.length < 9) {
     return null;
   }
 
@@ -150,9 +151,7 @@ function parseOI(list = []) {
 
 
   const change = (bars) => {
-    if (
-      rows.length <= bars
-    ) {
+    if (rows.length <= bars) {
       return null;
     }
 
@@ -163,27 +162,15 @@ function parseOI(list = []) {
   };
 
 
-  // ----------------------------------------------------------
-  // 最近四个 15M OI step
+  // ==========================================================
+  // 最近4个15M OI step
   //
   // oldest -> newest
-  //
-  // 例如：
-  //
-  // [0.2, 0.4, 0.8, 1.3]
-  //
-  // 表示 OI 连续加速建立。
-  // ----------------------------------------------------------
+  // ==========================================================
 
   const steps = [];
 
-
-  for (
-    let i = 4;
-    i >= 1;
-    i--
-  ) {
-
+  for (let i = 4; i >= 1; i--) {
     steps.push(
       round(
         pct(
@@ -196,25 +183,183 @@ function parseOI(list = []) {
   }
 
 
+  const validSteps =
+    steps.filter(Number.isFinite);
+
+
   const positiveSteps =
-    steps.filter(
-      (value) =>
-        value !== null &&
-        value > 0
+    validSteps.filter(
+      (value) => value > 0
     ).length;
 
 
   const negativeSteps =
-    steps.filter(
-      (value) =>
-        value !== null &&
-        value < 0
+    validSteps.filter(
+      (value) => value < 0
     ).length;
+
+
+  // ==========================================================
+  // LATEST STEP
+  // ==========================================================
+
+  const latestStep =
+    validSteps.length
+      ? validSteps[validSteps.length - 1]
+      : null;
+
+
+  const priorSteps =
+    validSteps.slice(0, -1);
+
+
+  const priorPositiveSteps =
+    priorSteps.filter(
+      (value) => value > 0
+    ).length;
+
+
+  // ==========================================================
+  // CONSECUTIVE POSITIVE
+  //
+  // 从最新15M向前数连续正增长
+  // ==========================================================
+
+  let consecutivePositive = 0;
+
+  for (
+    let i = validSteps.length - 1;
+    i >= 0;
+    i--
+  ) {
+    if (validSteps[i] > 0) {
+      consecutivePositive++;
+    } else {
+      break;
+    }
+  }
+
+
+  // ==========================================================
+  // CONSECUTIVE NEGATIVE
+  // ==========================================================
+
+  let consecutiveNegative = 0;
+
+  for (
+    let i = validSteps.length - 1;
+    i >= 0;
+    i--
+  ) {
+    if (validSteps[i] < 0) {
+      consecutiveNegative++;
+    } else {
+      break;
+    }
+  }
+
+
+  // ==========================================================
+  // MAX POSITIVE STEP
+  // ==========================================================
+
+  const positiveValues =
+    validSteps.filter(
+      (value) => value > 0
+    );
+
+
+  const maxPositiveStep =
+    positiveValues.length
+      ? Math.max(...positiveValues)
+      : 0;
+
+
+  // ==========================================================
+  // BUILD QUALITY
+  //
+  // 0 - 100
+  //
+  // 奖励 OI 连续性，
+  // 而不是单纯奖励单根幅度。
+  // ==========================================================
+
+  let buildQuality = 0;
+
+
+  buildQuality +=
+    positiveSteps * 15;
+
+
+  buildQuality +=
+    consecutivePositive * 10;
+
+
+  if (priorPositiveSteps >= 2) {
+    buildQuality += 10;
+  }
+
+
+  if (positiveSteps === 4) {
+    buildQuality += 10;
+  }
+
+
+  buildQuality =
+    Math.min(
+      buildQuality,
+      100
+    );
+
+
+  // ==========================================================
+  // OI SPIKE
+  //
+  // 典型：
+  //
+  // -0.48
+  // -0.30
+  // -0.02
+  // +19.26
+  //
+  // 最新一根贡献绝大部分1H OI增长，
+  // 前面没有连续建仓。
+  // ==========================================================
+
+  const oi1h =
+    change(4);
+
+
+  let spikeRatio = null;
+
+  let isOiSpike = false;
+
+
+  if (
+    latestStep !== null &&
+    latestStep >= 3 &&
+    oi1h !== null &&
+    oi1h > 0
+  ) {
+
+    spikeRatio =
+      latestStep /
+      oi1h;
+
+
+    if (
+      spikeRatio >= 0.75 &&
+      priorPositiveSteps <= 1
+    ) {
+      isOiSpike = true;
+    }
+  }
 
 
   return {
 
     current,
+
 
     oi15mPct:
       round(
@@ -222,11 +367,13 @@ function parseOI(list = []) {
         2
       ),
 
+
     oi30mPct:
       round(
         change(2),
         2
       ),
+
 
     oi1hPct:
       round(
@@ -234,11 +381,50 @@ function parseOI(list = []) {
         2
       ),
 
+
+    oi2hPct:
+      round(
+        change(8),
+        2
+      ),
+
+
     steps,
+
 
     positiveSteps,
 
     negativeSteps,
+
+    priorPositiveSteps,
+
+    consecutivePositive,
+
+    consecutiveNegative,
+
+    latestStep:
+      round(
+        latestStep,
+        2
+      ),
+
+    maxPositiveStep:
+      round(
+        maxPositiveStep,
+        2
+      ),
+
+    buildQuality,
+
+    spikeRatio:
+      spikeRatio !== null
+        ? round(
+            spikeRatio,
+            2
+          )
+        : null,
+
+    isOiSpike,
   };
 }
 
@@ -248,33 +434,28 @@ function parseOI(list = []) {
 // ============================================================
 
 function parseKline(list = []) {
-  const rows =
-    [...list]
-      .map((item) => ({
-        ts: Number(item[0]),
-        open: num(item[1]),
-        high: num(item[2]),
-        low: num(item[3]),
-        close: num(item[4]),
-        volume: num(item[5]),
-        turnover: num(item[6]),
-      }))
-
-      .filter(
-        (item) =>
-          Number.isFinite(item.ts) &&
-          item.close !== null
-      )
-
-      .sort(
-        (a, b) =>
-          b.ts - a.ts
-      );
+  const rows = [...list]
+    .map((item) => ({
+      ts: Number(item[0]),
+      open: num(item[1]),
+      high: num(item[2]),
+      low: num(item[3]),
+      close: num(item[4]),
+      volume: num(item[5]),
+      turnover: num(item[6]),
+    }))
+    .filter(
+      (item) =>
+        Number.isFinite(item.ts) &&
+        item.close !== null
+    )
+    .sort(
+      (a, b) =>
+        b.ts - a.ts
+    );
 
 
-  if (
-    rows.length < 13
-  ) {
+  if (rows.length < 13) {
     return null;
   }
 
@@ -284,9 +465,7 @@ function parseKline(list = []) {
 
 
   const change = (bars) => {
-    if (
-      rows.length <= bars
-    ) {
+    if (rows.length <= bars) {
       return null;
     }
 
@@ -297,7 +476,6 @@ function parseKline(list = []) {
   };
 
 
-  // 最近 15M 平均成交量
   const recentVolume =
     rows
       .slice(0, 3)
@@ -310,7 +488,6 @@ function parseKline(list = []) {
       );
 
 
-  // 前约 1H 作为基准
   const baselineVolume =
     rows
       .slice(3, 15)
@@ -339,7 +516,6 @@ function parseKline(list = []) {
     baselineAverage !== null &&
     baselineAverage > 0
   ) {
-
     volumeRatio =
       recentAverage /
       baselineAverage;
@@ -354,17 +530,20 @@ function parseKline(list = []) {
         2
       ),
 
+
     price15mPct:
       round(
         change(3),
         2
       ),
 
+
     price1hPct:
       round(
         change(12),
         2
       ),
+
 
     volume15mRatio:
       round(
@@ -378,9 +557,8 @@ function parseKline(list = []) {
 // ============================================================
 // DISCOVERY SCORE
 //
-// 第一层只负责发现 OI 异常。
-//
-// Funding 不决定谁能进入扫描。
+// 只负责第一层 OI 异常发现。
+// Funding 不负责决定谁进入。
 // ============================================================
 
 function discoveryScore(x) {
@@ -418,33 +596,34 @@ function discoveryScore(x) {
     ) * 4;
 
 
-  // 连续建仓
   score +=
     (x.positiveSteps || 0) * 2;
 
 
-  // 最新15M突然加速
   if (oi15 >= 1) {
     score += 5;
   }
 
+
   if (oi15 >= 2) {
     score += 8;
   }
+
 
   if (oi15 >= 4) {
     score += 12;
   }
 
 
-  // 1H OI异常
   if (oi1h >= 3) {
     score += 8;
   }
 
+
   if (oi1h >= 5) {
     score += 12;
   }
+
 
   if (oi1h >= 8) {
     score += 18;
@@ -459,9 +638,7 @@ function discoveryScore(x) {
 
 
 // ============================================================
-// V3 STATE MACHINE
-//
-// 生命周期：
+// V3.1 STATE MACHINE
 //
 // ACCUMULATING
 //      ↓
@@ -473,12 +650,11 @@ function discoveryScore(x) {
 //      ↓
 // UNWINDING
 //
-// 另外：
+// 特殊状态：
 //
+// OI_SPIKE
 // COOLING
 // OI_WATCH
-//
-// 用于处理中间状态。
 // ============================================================
 
 function classify(x) {
@@ -491,6 +667,9 @@ function classify(x) {
 
   const oi1h =
     x.oi1hPct ?? 0;
+
+  const oi2h =
+    x.oi2hPct ?? 0;
 
 
   const p5 =
@@ -519,13 +698,16 @@ function classify(x) {
     x.negativeSteps ?? 0;
 
 
+  const consecutiveNegative =
+    x.consecutiveNegative ?? 0;
+
+
+  const buildQuality =
+    x.buildQuality ?? 0;
+
+
   // ==========================================================
-  // EXTENDED
-  //
-  // 已经明显释放。
-  //
-  // 我们找的是早期，
-  // 所以这种状态不再作为主要候选。
+  // 1. EXTENDED
   // ==========================================================
 
   if (
@@ -535,27 +717,23 @@ function classify(x) {
       p15 >= 3
     )
   ) {
-
     return "EXTENDED";
   }
 
 
   // ==========================================================
-  // UNWINDING
+  // 2. UNWINDING
   //
-  // 真正持续撤仓。
-  //
-  // 不能因为一根 -0.1% / -0.2%
-  // 就直接判定撤仓。
+  // 必须是真正持续撤仓。
   // ==========================================================
 
   const hardUnwind =
-    oi15 <= -1.0 &&
-    oi30 <= -1.0;
+    oi15 <= -1 &&
+    oi30 <= -1;
 
 
   const persistentUnwind =
-    negativeSteps >= 3 &&
+    consecutiveNegative >= 2 &&
     oi15 <= -0.5 &&
     oi30 < 0;
 
@@ -567,54 +745,69 @@ function classify(x) {
     negativeSteps >= 2;
 
 
+  const longUnwind =
+    oi30 < 0 &&
+    oi1h < 0 &&
+    oi2h < 0 &&
+    negativeSteps >= 2;
+
+
   if (
     hardUnwind ||
     persistentUnwind ||
-    fullUnwind
+    fullUnwind ||
+    longUnwind
   ) {
-
     return "UNWINDING";
   }
 
 
   // ==========================================================
-  // COOLING
+  // 3. COOLING
   //
-  // 中周期 OI 仍然很强，
-  // 但最新15M轻微回吐。
-  //
-  // 例如：
-  //
-  // 15M -0.18%
-  // 30M +12%
-  // 1H  +12%
-  //
-  // 这种不能判 UNWINDING。
+  // 中周期仍有明显 OI，
+  // 最新15M轻微回吐。
   // ==========================================================
 
   if (
     oi15 < 0 &&
-    oi15 > -1.0 &&
+    oi15 > -1 &&
     (
       oi30 >= 2 ||
-      oi1h >= 3
+      oi1h >= 3 ||
+      oi2h >= 5
     )
   ) {
-
     return "COOLING";
   }
 
 
   // ==========================================================
-  // TRIGGERING
+  // 4. OI SPIKE
   //
-  // OI 已经建立
-  // +
-  // 价格开始动
-  // +
-  // 成交量开始放大
+  // 最新一根突然出现巨大 OI，
+  // 但此前没有连续建仓。
   //
-  // Funding 不作为必要条件。
+  // 不直接视为干净的 ACCUMULATING。
+  // ==========================================================
+
+  if (
+    x.isOiSpike === true &&
+    p1h < 8
+  ) {
+    return "OI_SPIKE";
+  }
+
+
+  // ==========================================================
+  // 5. TRIGGERING
+  //
+  // 必须：
+  //
+  // OI建立
+  // + 有一定连续性
+  // + 价格转强
+  // + 成交量确认
   // ==========================================================
 
   const oiEstablished =
@@ -624,6 +817,10 @@ function classify(x) {
       oi1h >= 2 ||
       positiveSteps >= 3
     );
+
+
+  const qualityConfirmed =
+    buildQuality >= 40;
 
 
   const priceTrigger =
@@ -637,25 +834,21 @@ function classify(x) {
 
   if (
     oiEstablished &&
+    qualityConfirmed &&
     priceTrigger &&
     volumeTrigger &&
     p1h < 8
   ) {
-
     return "TRIGGERING";
   }
 
 
   // ==========================================================
-  // SQUEEZE_READY
+  // 6. SQUEEZE READY
   //
-  // OI 已经建立
-  // +
-  // Funding 明显负
-  // +
-  // 价格尚未释放
-  //
-  // 这是我们非常关注的状态。
+  // 负 Funding
+  // + OI持续建立
+  // + 价格尚未释放
   // ==========================================================
 
   const squeezeOI =
@@ -664,7 +857,8 @@ function classify(x) {
       oi30 >= 2 ||
       oi1h >= 3
     ) &&
-    positiveSteps >= 2;
+    positiveSteps >= 2 &&
+    buildQuality >= 40;
 
 
   const priceNotReleased =
@@ -677,34 +871,33 @@ function classify(x) {
     funding <= -0.0005 &&
     priceNotReleased
   ) {
-
     return "SQUEEZE_READY";
   }
 
 
   // ==========================================================
-  // ACCUMULATING
+  // 7. ACCUMULATING
   //
-  // OI先动，价格还没明显动。
-  //
-  // 不机械要求 1H OI >= 5%。
-  //
-  // 连续15M建仓也可以进入。
+  // OI先动，
+  // 价格尚未明显释放。
   // ==========================================================
 
   const sustainedBuild =
     positiveSteps >= 3 &&
-    oi1h >= 0.5;
+    oi1h >= 0.5 &&
+    buildQuality >= 50;
 
 
   const acceleratedBuild =
     oi15 >= 0.5 &&
-    oi30 >= 1;
+    oi30 >= 1 &&
+    buildQuality >= 40;
 
 
   const strongHourlyBuild =
     oi1h >= 3 &&
-    oi15 >= 0;
+    oi15 >= 0 &&
+    buildQuality >= 40;
 
 
   if (
@@ -716,16 +909,12 @@ function classify(x) {
     p1h > -5 &&
     p1h <= 5
   ) {
-
     return "ACCUMULATING";
   }
 
 
   // ==========================================================
-  // OI_WATCH
-  //
-  // 有异常，
-  // 但尚未形成足够完整的启动结构。
+  // 8. OI WATCH
   // ==========================================================
 
   if (
@@ -733,7 +922,6 @@ function classify(x) {
     oi30 >= 1 ||
     oi15 >= 0.5
   ) {
-
     return "OI_WATCH";
   }
 
@@ -743,11 +931,10 @@ function classify(x) {
 
 
 // ============================================================
-// 5M TRIGGER DETAIL
+// TRIGGER STATE
 //
-// signal：中周期状态
-//
-// trigger：当前短周期是否正在点火
+// signal = 中周期结构
+// trigger = 当前5M是否点火
 // ============================================================
 
 function triggerState(x) {
@@ -772,39 +959,57 @@ function triggerState(x) {
     x.volume15mRatio ?? 0;
 
 
+  const buildQuality =
+    x.buildQuality ?? 0;
+
+
+  // ==========================================================
+  // SPIKE 不能因为价格刚好上涨
+  // 就直接获得 ACTIVE。
+  // ==========================================================
+
+  if (
+    x.isOiSpike === true
+  ) {
+
+    if (
+      p5 >= 0.3 &&
+      p15 > 0 &&
+      volume >= 1.5
+    ) {
+      return "SPIKE_ACTIVE";
+    }
+
+    return "SPIKE_WAIT";
+  }
+
+
   // ==========================================================
   // ACTIVE
-  //
-  // OI继续增加
-  // + 5M价格明显转强
-  // + 15M价格为正
-  // + 成交量明显放大
   // ==========================================================
 
   if (
     oi15 > 0 &&
+    buildQuality >= 40 &&
     p5 >= 0.3 &&
     p15 > 0 &&
     volume >= 1.5
   ) {
-
     return "ACTIVE";
   }
 
 
   // ==========================================================
   // EARLY
-  //
-  // 刚开始点火。
   // ==========================================================
 
   if (
     oi15 > 0 &&
+    buildQuality >= 40 &&
     p5 > 0.15 &&
     p15 >= 0 &&
     volume >= 1.1
   ) {
-
     return "EARLY";
   }
 
@@ -812,10 +1017,8 @@ function triggerState(x) {
   // ==========================================================
   // LOADING
   //
-  // OI明显建立，
-  // 但价格基本没动。
-  //
-  // 这是雷达最希望提前发现的状态之一。
+  // OI建立，
+  // 价格尚未启动。
   // ==========================================================
 
   if (
@@ -826,23 +1029,18 @@ function triggerState(x) {
     Math.abs(p5) <= 0.5 &&
     volume < 1.5
   ) {
-
     return "LOADING";
   }
 
 
   // ==========================================================
-  // VOLUME_ONLY
-  //
-  // 有量，
-  // 但价格方向尚未确认。
+  // VOLUME ONLY
   // ==========================================================
 
   if (
     oi15 > 0 &&
     volume >= 1.5
   ) {
-
     return "VOLUME_ONLY";
   }
 
@@ -852,11 +1050,17 @@ function triggerState(x) {
 
 
 // ============================================================
-// FINAL SCORE
+// FINAL SCORE — V3.1
 //
-// Score只负责排序。
+// 重点：
 //
-// State负责解释市场结构。
+// 1. OI幅度
+// 2. OI连续性
+// 3. Funding
+// 4. Volume
+// 5. Price位置
+//
+// 单根 OI SPIKE 不再轻易霸榜。
 // ============================================================
 
 function finalScore(x) {
@@ -874,6 +1078,10 @@ function finalScore(x) {
 
   const oi1h =
     x.oi1hPct ?? 0;
+
+
+  const oi2h =
+    x.oi2hPct ?? 0;
 
 
   const funding =
@@ -896,53 +1104,69 @@ function finalScore(x) {
     x.price1hPct ?? 0;
 
 
+  const buildQuality =
+    x.buildQuality ?? 0;
+
+
   // ==========================================================
-  // OI
+  // OI MAGNITUDE
   //
-  // 设置上限，
-  // 防止某个极端 OI 数值完全统治排行榜。
+  // 全部封顶。
   // ==========================================================
 
   score += Math.min(
-    Math.max(oi15, 0) * 4,
-    15
+    Math.max(oi15, 0) * 3,
+    12
   );
 
 
   score += Math.min(
-    Math.max(oi30, 0) * 2,
-    15
+    Math.max(oi30, 0) * 1.8,
+    14
   );
 
 
   score += Math.min(
-    Math.max(oi1h, 0) * 2.5,
-    25
+    Math.max(oi1h, 0) * 2,
+    20
+  );
+
+
+  // 2H 只给少量背景分
+  score += Math.min(
+    Math.max(oi2h, 0) * 0.5,
+    8
   );
 
 
   // ==========================================================
-  // OI 连续性
+  // BUILD QUALITY
+  //
+  // 阶梯建仓成为核心加分项。
   // ==========================================================
+
+  score += Math.min(
+    buildQuality * 0.18,
+    18
+  );
+
 
   if (
-    x.positiveSteps >= 3
-  ) {
-    score += 8;
-  }
-
-
-  if (
-    x.positiveSteps === 4
+    x.consecutivePositive >= 3
   ) {
     score += 5;
   }
 
 
+  if (
+    x.consecutivePositive === 4
+  ) {
+    score += 4;
+  }
+
+
   // ==========================================================
   // FUNDING
-  //
-  // 只作为增强项。
   // ==========================================================
 
   if (
@@ -987,7 +1211,7 @@ function finalScore(x) {
   if (
     volume >= 2
   ) {
-    score += 5;
+    score += 4;
   }
 
 
@@ -1016,6 +1240,13 @@ function finalScore(x) {
   }
 
 
+  if (
+    x.trigger === "SPIKE_ACTIVE"
+  ) {
+    score += 3;
+  }
+
+
   // ==========================================================
   // STATE
   // ==========================================================
@@ -1023,14 +1254,14 @@ function finalScore(x) {
   if (
     x.signal === "ACCUMULATING"
   ) {
-    score += 12;
+    score += 14;
   }
 
 
   if (
     x.signal === "SQUEEZE_READY"
   ) {
-    score += 18;
+    score += 20;
   }
 
 
@@ -1038,6 +1269,13 @@ function finalScore(x) {
     x.signal === "TRIGGERING"
   ) {
     score += 22;
+  }
+
+
+  if (
+    x.signal === "OI_SPIKE"
+  ) {
+    score -= 15;
   }
 
 
@@ -1067,7 +1305,7 @@ function finalScore(x) {
   //
   // 奖励：
   //
-  // OI先动
+  // OI已经动
   // 价格还没明显动
   // ==========================================================
 
@@ -1189,7 +1427,6 @@ export default async function handler(
 
 
       if (cursor) {
-
         params.cursor =
           cursor;
       }
@@ -1243,10 +1480,6 @@ export default async function handler(
       );
 
 
-    // ========================================================
-    // MARKET UNIVERSE
-    // ========================================================
-
     const universe =
       tickers
 
@@ -1294,23 +1527,12 @@ export default async function handler(
               ),
 
 
-            // ================================================
-            // 当前 ticker 单边 OI
-            // ================================================
-
             tickerSingleOI:
               num(
                 item.singleOpenInterest
               ),
           })
         )
-
-
-        // ====================================================
-        // 流动性过滤
-        //
-        // 暂时保持 V2 的 500k USDT 24H turnover。
-        // ====================================================
 
         .filter(
           (item) =>
@@ -1322,11 +1544,7 @@ export default async function handler(
 
 
     // ========================================================
-    // 4. FULL MARKET OI DISCOVERY
-    //
-    // 所有 universe 全部查 OI。
-    //
-    // Funding 不参与决定谁能被发现。
+    // 4. FULL MARKET OI SCAN
     // ========================================================
 
     const oiRows = [];
@@ -1367,8 +1585,15 @@ export default async function handler(
                       intervalTime:
                         "15min",
 
+                      // ======================================
+                      // V3.1:
+                      //
+                      // 需要至少9根才能计算2H。
+                      // 拉12根留余量。
+                      // ======================================
+
                       limit:
-                        "8",
+                        "12",
                     }
                   );
 
@@ -1390,10 +1615,6 @@ export default async function handler(
                   ...ticker,
 
 
-                  // ==========================================
-                  // Bybit App calibrated single-sided OI
-                  // ==========================================
-
                   singleOpenInterest:
                     oi.current,
 
@@ -1410,6 +1631,10 @@ export default async function handler(
                     oi.oi1hPct,
 
 
+                  oi2hPct:
+                    oi.oi2hPct,
+
+
                   oi15mSteps:
                     oi.steps,
 
@@ -1420,6 +1645,38 @@ export default async function handler(
 
                   negativeSteps:
                     oi.negativeSteps,
+
+
+                  priorPositiveSteps:
+                    oi.priorPositiveSteps,
+
+
+                  consecutivePositive:
+                    oi.consecutivePositive,
+
+
+                  consecutiveNegative:
+                    oi.consecutiveNegative,
+
+
+                  latestOiStep:
+                    oi.latestStep,
+
+
+                  maxPositiveOiStep:
+                    oi.maxPositiveStep,
+
+
+                  buildQuality:
+                    oi.buildQuality,
+
+
+                  spikeRatio:
+                    oi.spikeRatio,
+
+
+                  isOiSpike:
+                    oi.isOiSpike,
                 };
 
 
@@ -1473,11 +1730,7 @@ export default async function handler(
 
 
     // ========================================================
-    // 5. OI ANOMALY DISCOVERY
-    //
-    // 不机械要求 1H >= 5%。
-    //
-    // 连续15M小幅建立也可以进入。
+    // 5. OI DISCOVERY
     // ========================================================
 
     const oiCandidates =
@@ -1506,20 +1759,12 @@ export default async function handler(
               0;
 
 
-            // ================================================
-            // 1H OI anomaly
-            // ================================================
-
             if (
               oi1h >= 2
             ) {
               return true;
             }
 
-
-            // ================================================
-            // 30M OI anomaly
-            // ================================================
 
             if (
               oi30 >= 1
@@ -1528,20 +1773,12 @@ export default async function handler(
             }
 
 
-            // ================================================
-            // 15M sudden OI build
-            // ================================================
-
             if (
               oi15 >= 0.5
             ) {
               return true;
             }
 
-
-            // ================================================
-            // 连续小幅 OI build
-            // ================================================
 
             if (
               item.positiveSteps >=
@@ -1551,14 +1788,6 @@ export default async function handler(
               return true;
             }
 
-
-            // ================================================
-            // 极端负 Funding
-            // +
-            // OI 正增长
-            //
-            // Funding只是辅助进入。
-            // ================================================
 
             if (
               funding <=
@@ -1589,8 +1818,6 @@ export default async function handler(
 
     // ========================================================
     // 6. KLINE DEEP SCAN
-    //
-    // 最多80个 OI 异常标的。
     // ========================================================
 
     const deepList =
@@ -1661,10 +1888,6 @@ export default async function handler(
                   ...row,
 
 
-                  // ==========================================
-                  // PRICE
-                  // ==========================================
-
                   price5mPct:
                     kline.price5mPct,
 
@@ -1684,17 +1907,9 @@ export default async function handler(
                     ),
 
 
-                  // ==========================================
-                  // VOLUME
-                  // ==========================================
-
                   volume15mRatio:
                     kline.volume15mRatio,
 
-
-                  // ==========================================
-                  // FUNDING
-                  // ==========================================
 
                   fundingPct:
                     row.fundingRate !==
@@ -1710,29 +1925,17 @@ export default async function handler(
                 };
 
 
-                // ============================================
-                // V3 STATE
-                // ============================================
-
                 item.signal =
                   classify(
                     item
                   );
 
 
-                // ============================================
-                // 5M TRIGGER
-                // ============================================
-
                 item.trigger =
                   triggerState(
                     item
                   );
 
-
-                // ============================================
-                // RANKING
-                // ============================================
 
                 item.score =
                   finalScore(
@@ -1785,11 +1988,6 @@ export default async function handler(
 
     // ========================================================
     // 7. ACTIONABLE
-    //
-    // EXTENDED / UNWINDING 不进入主要候选。
-    //
-    // COOLING 暂时保留，
-    // 方便我们观察二次蓄仓。
     // ========================================================
 
     const actionable =
@@ -1818,20 +2016,16 @@ export default async function handler(
 
 
     // ========================================================
-    // 8. UNWINDING
-    //
-    // 专门监控 OI 真正撤退。
-    //
-    // TUT 第一波结束类型应该更容易出现在这里。
+    // 8. OI SPIKES
     // ========================================================
 
-    const unwind =
+    const spikes =
       finalRows
 
         .filter(
           (item) =>
             item.signal ===
-              "UNWINDING"
+              "OI_SPIKE"
         )
 
         .sort(
@@ -1848,40 +2042,7 @@ export default async function handler(
 
 
     // ========================================================
-    // 9. EXTENDED
-    //
-    // 已经明显释放的标的单独输出，
-    // 防止它们污染早期候选榜。
-    // ========================================================
-
-    const extended =
-      finalRows
-
-        .filter(
-          (item) =>
-            item.signal ===
-              "EXTENDED"
-        )
-
-        .sort(
-          (a, b) =>
-            (
-              b.discoveryScore ||
-              0
-            ) -
-            (
-              a.discoveryScore ||
-              0
-            )
-        );
-
-
-    // ========================================================
-    // 10. COOLING
-    //
-    // 强 OI 建仓后出现轻微回吐。
-    //
-    // 用于观察是否形成二次蓄仓。
+    // 9. COOLING
     // ========================================================
 
     const cooling =
@@ -1907,6 +2068,58 @@ export default async function handler(
 
 
     // ========================================================
+    // 10. UNWINDING
+    // ========================================================
+
+    const unwind =
+      finalRows
+
+        .filter(
+          (item) =>
+            item.signal ===
+              "UNWINDING"
+        )
+
+        .sort(
+          (a, b) =>
+            (
+              b.discoveryScore ||
+              0
+            ) -
+            (
+              a.discoveryScore ||
+              0
+            )
+        );
+
+
+    // ========================================================
+    // 11. EXTENDED
+    // ========================================================
+
+    const extended =
+      finalRows
+
+        .filter(
+          (item) =>
+            item.signal ===
+              "EXTENDED"
+        )
+
+        .sort(
+          (a, b) =>
+            (
+              b.discoveryScore ||
+              0
+            ) -
+            (
+              a.discoveryScore ||
+              0
+            )
+        );
+
+
+    // ========================================================
     // OUTPUT
     // ========================================================
 
@@ -1919,7 +2132,7 @@ export default async function handler(
 
 
         version:
-          "OI-RADAR-V3",
+          "OI-RADAR-V3.1",
 
 
         source:
@@ -1943,10 +2156,6 @@ export default async function handler(
           started,
 
 
-        // ====================================================
-        // DIAGNOSTICS
-        // ====================================================
-
         diagnostics: {
 
           universeCount:
@@ -1969,16 +2178,20 @@ export default async function handler(
             actionable.length,
 
 
+          spikeCount:
+            spikes.length,
+
+
+          coolingCount:
+            cooling.length,
+
+
           unwindCount:
             unwind.length,
 
 
           extendedCount:
             extended.length,
-
-
-          coolingCount:
-            cooling.length,
 
 
           oiErrors,
@@ -1992,7 +2205,7 @@ export default async function handler(
 
 
         // ====================================================
-        // EARLY / ACTIONABLE CANDIDATES
+        // 主要候选
         // ====================================================
 
         candidates:
@@ -2003,7 +2216,18 @@ export default async function handler(
 
 
         // ====================================================
-        // OI COOLING
+        // 单根 OI 异常爆发
+        // ====================================================
+
+        oiSpikes:
+          spikes.slice(
+            0,
+            10
+          ),
+
+
+        // ====================================================
+        // 建仓后冷却
         // ====================================================
 
         cooling:
@@ -2014,7 +2238,7 @@ export default async function handler(
 
 
         // ====================================================
-        // OI UNWINDING
+        // 持续撤仓
         // ====================================================
 
         oiUnwind:
@@ -2025,7 +2249,7 @@ export default async function handler(
 
 
         // ====================================================
-        // ALREADY EXTENDED
+        // 已经明显释放
         // ====================================================
 
         extended:
@@ -2047,7 +2271,7 @@ export default async function handler(
 
 
         version:
-          "OI-RADAR-V3",
+          "OI-RADAR-V3.1",
 
 
         message:
