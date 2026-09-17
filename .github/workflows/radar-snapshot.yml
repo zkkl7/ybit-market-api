@@ -100,22 +100,58 @@ jobs:
             klineErrors: (.radar.klineErrors // null)
           }' data/latest.json
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Enrich candidate history
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node scripts/enrich-history.mjs
+
+          echo "Final Crypto longs:"
+          jq '.radar.longCandidates[]? | {
+            symbol,
+            candidateState,
+            candidateQuality,
+            historyStabilityScore,
+            finalCandidateScore,
+            historyTrend,
+            seenInLast3
+          }' data/latest.json
+
+          echo "Final Crypto shorts:"
+          jq '.radar.shortCandidates[]? | {
+            symbol,
+            candidateState,
+            candidateQuality,
+            historyStabilityScore,
+            finalCandidateScore,
+            historyTrend,
+            seenInLast3
+          }' data/latest.json
+
       - name: Commit latest snapshot
         shell: bash
         run: |
           set -euo pipefail
 
-          if git diff --quiet -- data/latest.json && git ls-files --error-unmatch data/latest.json >/dev/null 2>&1; then
-            echo "No snapshot changes to commit."
+          if git diff --quiet -- data/latest.json data/history.json \
+            && git ls-files --error-unmatch data/latest.json >/dev/null 2>&1 \
+            && git ls-files --error-unmatch data/history.json >/dev/null 2>&1; then
+            echo "No snapshot/history changes to commit."
             exit 0
           fi
 
           git config user.name "radar-snapshot-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add data/latest.json
+          git add data/latest.json data/history.json
 
-          git commit -m "chore: update radar snapshot"
+          git commit -m "chore: update radar snapshot and history"
 
           git pull --rebase origin "${GITHUB_REF_NAME}"
 
