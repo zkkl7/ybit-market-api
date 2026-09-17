@@ -175,7 +175,7 @@ test('handler keeps market/discovery scope, adds bounded reduction lane and prop
   let status, payload;
   await server.handler({}, { status(code) { status = code; return this; }, json(body) { payload = body; } });
   assert.equal(status, 200);
-  assert.equal(payload.version, 'OI-RADAR-V4');
+  assert.equal(payload.version, 'OI-RADAR-V4.1');
   assert.equal(payload.diagnostics.universeCount, 110);
   assert.equal(payload.diagnostics.oiCandidateCount, 85);
   assert.equal(payload.diagnostics.reductionDeepScannedCount, 20);
@@ -191,6 +191,8 @@ test('handler keeps market/discovery scope, adds bounded reduction lane and prop
   assert.ok(!requests.some(([, s]) => ['BTCUSDC', 'FUTUREUSDT', 'HALTEDUSDT', 'DUSTUSDT'].includes(s)));
   for (const field of ['candidates', 'oiSpikes', 'cooling', 'oiUnwind', 'extended']) assert.ok(Array.isArray(payload[field]));
   assert.ok(payload.executionStates.every(x => 'legacySignal' in x && 'legacyTrigger' in x && 'legacyScore' in x));
+  assert.ok(payload.candidates.every(x => x.crossExchange.status === 'not_configured'));
+  assert.equal(payload.diagnostics.crossExchange.status, 'not_configured');
 });
 test('handler errors identify V4', async () => {
   let code, payload;
@@ -198,6 +200,6 @@ test('handler errors identify V4', async () => {
     status(value) { code = value; return this; }, json(value) { payload = value; },
   });
   assert.equal(code, 500);
-  assert.equal(payload.version, 'OI-RADAR-V4');
+  assert.equal(payload.version, 'OI-RADAR-V4.1');
   assert.equal(payload.status, 'error');
 });
