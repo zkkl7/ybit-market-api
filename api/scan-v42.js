@@ -306,25 +306,53 @@ function isShortEligible(row) {
 }
 
 function buildCandidateLists(base) {
-  const crossBySymbol = new Map((base.candidates || []).map(row => [row.symbol, row.crossExchange]));
+  const crossBySymbol = new Map(
+    (base.candidates || []).map(row => [row.symbol, row.crossExchange])
+  );
+
   const rows = (base.executionStates || []).map(row => ({
     ...row,
-    crossExchange: row.crossExchange || crossBySymbol.get(row.symbol),
+    crossExchange:
+      row.crossExchange ||
+      crossBySymbol.get(row.symbol),
   }));
 
-  const longs = rows.filter(isLongEligible)
+  const evaluatedLongs = rows
+    .filter(isLongEligible)
     .map(row => evaluateCandidate(row, "LONG"))
-    .filter(x => x.candidateState !== "WATCH")
-    .sort((a, b) => b.candidateQuality - a.candidateQuality)
-    .slice(0, 3);
+    .filter(x => x.candidateState !== "WATCH");
 
-  const shorts = rows.filter(isShortEligible)
+  const evaluatedShorts = rows
+    .filter(isShortEligible)
     .map(row => evaluateCandidate(row, "SHORT"))
-    .filter(x => x.candidateState !== "WATCH")
+    .filter(x => x.candidateState !== "WATCH");
+
+  const longCandidates = evaluatedLongs
+    .filter(x => x.marketType === "CRYPTO_PERP")
     .sort((a, b) => b.candidateQuality - a.candidateQuality)
     .slice(0, 3);
 
-  return { longCandidates: longs, shortCandidates: shorts };
+  const shortCandidates = evaluatedShorts
+    .filter(x => x.marketType === "CRYPTO_PERP")
+    .sort((a, b) => b.candidateQuality - a.candidateQuality)
+    .slice(0, 3);
+
+  const tradFiLongCandidates = evaluatedLongs
+    .filter(x => x.marketType === "TRADFI_PERP")
+    .sort((a, b) => b.candidateQuality - a.candidateQuality)
+    .slice(0, 3);
+
+  const tradFiShortCandidates = evaluatedShorts
+    .filter(x => x.marketType === "TRADFI_PERP")
+    .sort((a, b) => b.candidateQuality - a.candidateQuality)
+    .slice(0, 3);
+
+  return {
+    longCandidates,
+    shortCandidates,
+    tradFiLongCandidates,
+    tradFiShortCandidates,
+  };
 }
 
 export default async function handler(req, res) {
