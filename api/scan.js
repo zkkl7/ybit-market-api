@@ -169,7 +169,12 @@ function selectCoinalyzeMarkets(candidates, markets, exchanges, limit = COINALYZ
 
 function buildCrossExchange(markets, oiSeries, fundingRows, exchangeNames) {
   const oiBySymbol = new Map(oiSeries.map(x => [x.symbol, Array.isArray(x.history) ? x.history : []]));
-  const fundingBySymbol = new Map(fundingRows.map(x => [x.symbol, num(x.value)]));
+const fundingBySymbol = new Map(
+  fundingRows.map(x => [
+    x.symbol,
+    Number.isFinite(num(x.value)) ? num(x.value) / 100 : null
+  ])
+);
   const histories = markets.map(market => ({ market, history: oiBySymbol.get(market.symbol) || [] }));
   if (histories.some(x => x.history.length < 13))
     return unavailableCrossExchange("insufficient_data", "Missing 5M OI history for one or more exchanges.");
@@ -206,6 +211,7 @@ function buildCrossExchange(markets, oiSeries, fundingRows, exchangeNames) {
   return { status: "ok", source: "Coinalyze", sampleAt: latest * 1000,
     marketCount: exchangeRows.length, aggregatedOiUsd: round(current, 2),
     aggregatedFundingRate: fundingOi > 0 ? round(fundingValue / fundingOi, 8) : null,
+    aggregatedFundingPct: fundingOi > 0 ? round((fundingValue / fundingOi) * 100, 4) : null,
     oi5mPct: changeAt(300), oi15mPct: changeAt(900), oi1hPct: changeAt(3600),
     bybitOiUsd: bybit?.oiUsd ?? null, bybitOiSharePct: bybit?.oiSharePct ?? null,
     exchanges: exchangeRows };
