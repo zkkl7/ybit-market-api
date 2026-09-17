@@ -1,4 +1,6 @@
 const BASE = "https://api.bybit.com";
+const COINALYZE_BASE = "https://api.coinalyze.net/v1";
+const COINALYZE_MAX_MARKETS = 18;
 
 const sleep = (ms) =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -109,6 +111,148 @@ function avg(values) {
 
 
 // ============================================================
+
+
+// ============================================================
+// COINALYZE CROSS-EXCHANGE VALIDATION
+// Output-only evidence: never changes discovery, ranking or execution.
+// 18 markets keep 18 OI + 18 funding + 2 metadata calls within 40/min.
+// ============================================================
+async function coinalyze(path, params, apiKey) {
+  const qs = new URLSearchParams(params);
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeout = controller ? setTimeout(() => controller.abort(), 8000) : null;
+  let response;
+  try {
+    response = await fetch(COINALYZE_BASE + path + "?" + qs, {
+      headers: { Accept: "application/json", api_key: apiKey,
+        "User-Agent": "Bybit-OI-Radar/4.1" },
+      signal: controller?.signal,
+    });
+  } finally {
+    if (timeout !== null && typeof clearTimeout === "function") clearTimeout(timeout);
+  }
+  const text = await response.text();
+  if (!response.ok) throw new Error("Coinalyze HTTP " + response.status + ": " + text.slice(0, 120));
+  try { return JSON.parse(text); }
+  catch { throw new Error("Coinalyze non-JSON response: " + text.slice(0, 120)); }
+}
+
+function unavailableCrossExchange(status, reason = null) {
+  return { status, source: "Coinalyze", reason,
+    aggregatedOiUsd: null, aggregatedFundingRate: null,
+    oi5mPct: null, oi15mPct: null, oi1hPct: null,
+    bybitOiUsd: null, bybitOiSharePct: null, exchanges: [] };
+}
+
+function selectCoinalyzeMarkets(candidates, markets, exchanges, limit = COINALYZE_MAX_MARKETS) {
+  const exchangeNames = new Map(exchanges.map(x => [x.code, x.name]));
+  const bybitCodes = new Set(exchanges.filter(x => /bybit/i.test(x.name || "")).map(x => x.code));
+  const priority = ["Bybit", "Binance", "OKX", "Bitget", "Gate", "Kraken", "Deribit"];
+  const selected = new Map();
+  for (const candidate of candidates.slice(0, Math.floor(limit / 2))) {
+    const bybitMarket = markets.find(x => bybitCodes.has(x.exchange) &&
+      x.symbol_on_exchange === candidate.symbol && x.is_perpetual === true);
+    if (!bybitMarket) continue;
+    const eligible = markets.filter(x => x.base_asset === bybitMarket.base_asset &&
+      x.is_perpetual === true && x.margined === "STABLE" &&
+      ["USD", "USDT", "USDC"].includes(x.quote_asset)).sort((a, b) => {
+        const rank = x => { const n = (exchangeNames.get(x.exchange) || "").toLowerCase();
+          const i = priority.findIndex(p => n.includes(p.toLowerCase())); return i < 0 ? 999 : i; };
+        return rank(a) - rank(b);
+      });
+    const pair = [bybitMarket, ...eligible.filter(x => x.symbol !== bybitMarket.symbol)].slice(0, 2);
+    if (pair.length >= 2) selected.set(candidate.symbol, pair);
+  }
+  return { selected, exchangeNames };
+}
+
+function buildCrossExchange(markets, oiSeries, fundingRows, exchangeNames) {
+  const oiBySymbol = new Map(oiSeries.map(x => [x.symbol, Array.isArray(x.history) ? x.history : []]));
+  const fundingBySymbol = new Map(fundingRows.map(x => [x.symbol, num(x.value)]));
+  const histories = markets.map(market => ({ market, history: oiBySymbol.get(market.symbol) || [] }));
+  if (histories.some(x => x.history.length < 13))
+    return unavailableCrossExchange("insufficient_data", "Missing 5M OI history for one or more exchanges.");
+  const commonTimes = histories.map(x => new Set(x.history.map(p => Number(p.t))))
+    .reduce((common, times) => new Set([...common].filter(t => times.has(t))));
+  const latest = Math.max(...commonTimes);
+  if (!Number.isFinite(latest))
+    return unavailableCrossExchange("insufficient_data", "No common OI timestamp across exchanges.");
+  const totals = new Map();
+  for (const offset of [0, 300, 900, 3600]) {
+    const at = latest - offset;
+    if (!commonTimes.has(at)) continue;
+    totals.set(at, histories.reduce((sum, x) => {
+      const point = x.history.find(p => Number(p.t) === at);
+      return sum + (num(point?.c) || 0);
+    }, 0));
+  }
+  const current = totals.get(latest);
+  if (!Number.isFinite(current) || current <= 0)
+    return unavailableCrossExchange("insufficient_data", "Aggregated OI is unavailable.");
+  const exchangeRows = histories.map(({ market, history }) => {
+    const oiUsd = num(history.find(p => Number(p.t) === latest)?.c);
+    return { exchange: exchangeNames.get(market.exchange) || market.exchange,
+      symbol: market.symbol, symbolOnExchange: market.symbol_on_exchange,
+      oiUsd: round(oiUsd, 2), oiSharePct: oiUsd !== null ? round(oiUsd / current * 100, 2) : null,
+      fundingRate: fundingBySymbol.get(market.symbol) ?? null };
+  });
+  const bybit = exchangeRows.find(x => /bybit/i.test(x.exchange));
+  const funded = exchangeRows.filter(x => Number.isFinite(x.oiUsd) && Number.isFinite(x.fundingRate));
+  const fundingOi = funded.reduce((sum, x) => sum + x.oiUsd, 0);
+  const fundingValue = funded.reduce((sum, x) => sum + x.oiUsd * x.fundingRate, 0);
+  const changeAt = seconds => { const prior = totals.get(latest - seconds);
+    return Number.isFinite(prior) && prior > 0 ? round(pct(current, prior), 2) : null; };
+  return { status: "ok", source: "Coinalyze", sampleAt: latest * 1000,
+    marketCount: exchangeRows.length, aggregatedOiUsd: round(current, 2),
+    aggregatedFundingRate: fundingOi > 0 ? round(fundingValue / fundingOi, 8) : null,
+    oi5mPct: changeAt(300), oi15mPct: changeAt(900), oi1hPct: changeAt(3600),
+    bybitOiUsd: bybit?.oiUsd ?? null, bybitOiSharePct: bybit?.oiSharePct ?? null,
+    exchanges: exchangeRows };
+}
+
+async function addCrossExchangeValidation(candidates, apiKey, now = Date.now()) {
+  if (!apiKey) {
+    candidates.forEach(row => { row.crossExchange = unavailableCrossExchange(
+      "not_configured", "COINALYZE_API_KEY is not set."); });
+    return { status: "not_configured", enrichedCount: 0, marketCount: 0 };
+  }
+  try {
+    const [markets, exchanges] = await Promise.all([
+      coinalyze("/future-markets", {}, apiKey), coinalyze("/exchanges", {}, apiKey)]);
+    const { selected, exchangeNames } = selectCoinalyzeMarkets(candidates, markets, exchanges);
+    const selectedMarkets = [...selected.values()].flat().slice(0, COINALYZE_MAX_MARKETS);
+    if (!selectedMarkets.length) {
+      candidates.forEach(row => { row.crossExchange = unavailableCrossExchange(
+        "not_supported", "No matching cross-exchange perpetual markets."); });
+      return { status: "not_supported", enrichedCount: 0, marketCount: 0 };
+    }
+    const symbols = selectedMarkets.map(x => x.symbol).join(",");
+    const to = Math.floor(now / 1000), from = to - 2 * 3600;
+    const [oiSeries, fundingRows] = await Promise.all([
+      coinalyze("/open-interest-history", { symbols, interval: "5min", from: String(from),
+        to: String(to), convert_to_usd: "true" }, apiKey),
+      coinalyze("/funding-rate", { symbols }, apiKey),
+    ]);
+    let enrichedCount = 0;
+    for (const row of candidates) {
+      const rowMarkets = selected.get(row.symbol);
+      if (!rowMarkets) {
+        row.crossExchange = unavailableCrossExchange("rate_limit_budget",
+          "Not selected within the 18-market Coinalyze request budget.");
+        continue;
+      }
+      row.crossExchange = buildCrossExchange(rowMarkets, oiSeries, fundingRows, exchangeNames);
+      if (row.crossExchange.status === "ok") enrichedCount++;
+    }
+    return { status: "ok", enrichedCount, marketCount: selectedMarkets.length };
+  } catch (error) {
+    candidates.forEach(row => { row.crossExchange = unavailableCrossExchange(
+      "unavailable", "Coinalyze validation is temporarily unavailable."); });
+    return { status: "unavailable", enrichedCount: 0, marketCount: 0, error: error.message };
+  }
+}
+
 // OI PARSER — V3.1
 //
 // Bybit App 当前 OI 口径：
@@ -3428,6 +3572,19 @@ export default async function handler(
 
 
     // ========================================================
+    
+
+    const candidateRows = actionable.slice(0, 20);
+
+    // Output-only validation; failure cannot remove or reclassify Bybit candidates.
+    const coinalyzeApiKey = typeof process !== "undefined"
+      ? process.env?.COINALYZE_API_KEY
+      : null;
+    const crossExchangeDiagnostics = await addCrossExchangeValidation(
+      candidateRows,
+      coinalyzeApiKey
+    );
+
     // 8. OI SPIKES
     // ========================================================
 
@@ -3566,6 +3723,8 @@ export default async function handler(
 
 diagnostics: {
 
+  crossExchange: crossExchangeDiagnostics,
+
   reductionDeepScannedCount:
     reductionList.length,
 
@@ -3647,7 +3806,7 @@ diagnostics: {
         deleveraging: finalRows.filter(row => row.executionState === "DELEVERAGING"),
 
         candidates:
-          actionable.slice(
+          candidateRows.slice(
             0,
             20
           ),
