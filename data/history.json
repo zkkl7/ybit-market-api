@@ -1,6 +1,6 @@
 {
   "version": "RADAR-HISTORY-V1",
-  "updatedAt": "2026-09-17T15:41:52.888Z",
+  "updatedAt": "2026-09-17T15:55:22.986Z",
   "snapshots": [
     {
       "fetchedAt": "2026-09-17T15:29:01Z",
@@ -471,6 +471,194 @@
           "oi30mPct": 3.65,
           "oi1hPct": 5.41,
           "crossConfirmation": "CONFIRMED",
+          "marketType": "TRADFI_PERP"
+        }
+      ]
+    },
+    {
+      "fetchedAt": "2026-09-17T15:55:18Z",
+      "scannedAt": "2026-09-17T15:55:17.754Z",
+      "candidates": [
+        {
+          "symbol": "KSMUSDT",
+          "direction": "LONG",
+          "candidateState": "ENTRY_NOW",
+          "candidateQuality": 100,
+          "finalCandidateScore": 100,
+          "price": 4.284,
+          "oi15mPct": 1.6,
+          "oi30mPct": 4.55,
+          "oi1hPct": 6.58,
+          "crossConfirmation": "CONFIRMED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "MOODENGUSDT",
+          "direction": "LONG",
+          "candidateState": "ENTRY_NOW",
+          "candidateQuality": 78.7,
+          "finalCandidateScore": 86.2,
+          "price": 0.04144,
+          "oi15mPct": 0.34,
+          "oi30mPct": 6.22,
+          "oi1hPct": 5.07,
+          "crossConfirmation": "MIXED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "CRVUSDT",
+          "direction": "LONG",
+          "candidateState": "RETEST_ENTRY",
+          "candidateQuality": 87.2,
+          "finalCandidateScore": 80.7,
+          "price": 0.3239,
+          "oi15mPct": 1.54,
+          "oi30mPct": 1.57,
+          "oi1hPct": 1.64,
+          "crossConfirmation": "CONFIRMED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "AGIUSDT",
+          "direction": "LONG",
+          "candidateState": "RETEST_ENTRY",
+          "candidateQuality": 66,
+          "finalCandidateScore": 74.3,
+          "price": 0.005913,
+          "oi15mPct": 5.4,
+          "oi30mPct": 7.1,
+          "oi1hPct": 23.15,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "MARSCOINUSDT",
+          "direction": "LONG",
+          "candidateState": "PRE_ENTRY",
+          "candidateQuality": 67.8,
+          "finalCandidateScore": 73,
+          "price": 0.1163,
+          "oi15mPct": 0.25,
+          "oi30mPct": 2.71,
+          "oi1hPct": 2.87,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "XVGUSDT",
+          "direction": "LONG",
+          "candidateState": "PRE_ENTRY",
+          "candidateQuality": 76.4,
+          "finalCandidateScore": 71.8,
+          "price": 0.002891,
+          "oi15mPct": 0.22,
+          "oi30mPct": 3.27,
+          "oi1hPct": 3.45,
+          "crossConfirmation": "CONFIRMED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "TMXUSDT",
+          "direction": "LONG",
+          "candidateState": "ENTRY_NOW",
+          "candidateQuality": 73.4,
+          "finalCandidateScore": 69.3,
+          "price": 0.0229,
+          "oi15mPct": 0.46,
+          "oi30mPct": 0.58,
+          "oi1hPct": 1.31,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "CASHCATUSDT",
+          "direction": "LONG",
+          "candidateState": "ENTRY_NOW",
+          "candidateQuality": 72,
+          "finalCandidateScore": 67.5,
+          "price": 0.2013,
+          "oi15mPct": 0.51,
+          "oi30mPct": 2.87,
+          "oi1hPct": 3.32,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "DRIFTUSDT",
+          "direction": "LONG",
+          "candidateState": "RETEST_ENTRY",
+          "candidateQuality": 70.8,
+          "finalCandidateScore": 67.2,
+          "price": 0.01325,
+          "oi15mPct": 5.16,
+          "oi30mPct": 5.99,
+          "oi1hPct": 5.51,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "AAPLUSDT",
+          "direction": "LONG",
+          "candidateState": "RETEST_ENTRY",
+          "candidateQuality": 70.1,
+          "finalCandidateScore": 66.6,
+          "price": 334.94,
+          "oi15mPct": 0.79,
+          "oi30mPct": 0.86,
+          "oi1hPct": 0.55,
+          "crossConfirmation": "CONFIRMED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "AVAUSDT",
+          "direction": "SHORT",
+          "candidateState": "PRE_ENTRY",
+          "candidateQuality": 59.1,
+          "finalCandidateScore": 57.5,
+          "price": 0.2842,
+          "oi15mPct": 1.39,
+          "oi30mPct": 1.16,
+          "oi1hPct": 1.2,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "GENIUSUSDT",
+          "direction": "SHORT",
+          "candidateState": "PRE_ENTRY",
+          "candidateQuality": 52.7,
+          "finalCandidateScore": 52.2,
+          "price": 0.3504,
+          "oi15mPct": 1.67,
+          "oi30mPct": 2.12,
+          "oi1hPct": 3.63,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "NBISUSDT",
+          "direction": "LONG",
+          "candidateState": "PRE_ENTRY",
+          "candidateQuality": 59.3,
+          "finalCandidateScore": 65.8,
+          "price": 213.63,
+          "oi15mPct": 0.11,
+          "oi30mPct": 0.36,
+          "oi1hPct": 4.23,
+          "crossConfirmation": "CONFIRMED",
+          "marketType": "TRADFI_PERP"
+        },
+        {
+          "symbol": "4STOCKUSDT",
+          "direction": "LONG",
+          "candidateState": "PRE_ENTRY",
+          "candidateQuality": 55.9,
+          "finalCandidateScore": 54.9,
+          "price": 0.01264,
+          "oi15mPct": 1.69,
+          "oi30mPct": 1.24,
+          "oi1hPct": 3.44,
+          "crossConfirmation": "LOCAL_ONLY",
           "marketType": "TRADFI_PERP"
         }
       ]
