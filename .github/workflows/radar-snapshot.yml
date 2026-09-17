@@ -32,7 +32,7 @@ jobs:
 
           mkdir -p data
 
-          URL="https://ybit-market-api.vercel.app/api/scan"
+          URL="https://ybit-market-api.vercel.app/api/scan-v42"
           TEMP_FILE="$(mktemp)"
 
           echo "Fetching radar snapshot from Vercel..."
@@ -57,12 +57,8 @@ jobs:
             exit 1
           fi
 
-          # Make sure the response is valid JSON.
           jq empty "$TEMP_FILE"
 
-          # Basic sanity check:
-          # radar output should be a JSON object and should contain
-          # at least one identifying/diagnostic field.
           jq -e '
             type == "object"
             and (
@@ -77,7 +73,6 @@ jobs:
 
           FETCHED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
-          # Wrap the original radar response with snapshot metadata.
           jq \
             --arg fetchedAt "$FETCHED_AT" \
             --arg source "$URL" \
@@ -122,8 +117,6 @@ jobs:
 
           git commit -m "chore: update radar snapshot"
 
-          # A previous scheduled run may have committed while this run
-          # was fetching data. Rebase before pushing.
           git pull --rebase origin "${GITHUB_REF_NAME}"
 
           git push origin "HEAD:${GITHUB_REF_NAME}"
