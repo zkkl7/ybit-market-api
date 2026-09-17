@@ -320,38 +320,43 @@ function buildCandidateLists(base) {
   const evaluatedLongs = rows
     .filter(isLongEligible)
     .map(row => evaluateCandidate(row, "LONG"))
-    .filter(x => x.candidateState !== "WATCH");
+    .filter(x => x.candidateState !== "WATCH")
+    .sort((a, b) => b.candidateQuality - a.candidateQuality);
 
   const evaluatedShorts = rows
     .filter(isShortEligible)
     .map(row => evaluateCandidate(row, "SHORT"))
-    .filter(x => x.candidateState !== "WATCH");
+    .filter(x => x.candidateState !== "WATCH")
+    .sort((a, b) => b.candidateQuality - a.candidateQuality);
 
-  const longCandidates = evaluatedLongs
+  const longCandidatePool = evaluatedLongs
     .filter(x => x.marketType === "CRYPTO_PERP")
-    .sort((a, b) => b.candidateQuality - a.candidateQuality)
-    .slice(0, 3);
+    .slice(0, 10);
 
-  const shortCandidates = evaluatedShorts
+  const shortCandidatePool = evaluatedShorts
     .filter(x => x.marketType === "CRYPTO_PERP")
-    .sort((a, b) => b.candidateQuality - a.candidateQuality)
-    .slice(0, 3);
+    .slice(0, 10);
 
-  const tradFiLongCandidates = evaluatedLongs
+  const tradFiLongCandidatePool = evaluatedLongs
     .filter(x => x.marketType === "TRADFI_PERP")
-    .sort((a, b) => b.candidateQuality - a.candidateQuality)
-    .slice(0, 3);
+    .slice(0, 10);
 
-  const tradFiShortCandidates = evaluatedShorts
+  const tradFiShortCandidatePool = evaluatedShorts
     .filter(x => x.marketType === "TRADFI_PERP")
-    .sort((a, b) => b.candidateQuality - a.candidateQuality)
-    .slice(0, 3);
+    .slice(0, 10);
 
   return {
-    longCandidates,
-    shortCandidates,
-    tradFiLongCandidates,
-    tradFiShortCandidates,
+    // 保留原来的兼容输出
+    longCandidates: longCandidatePool.slice(0, 3),
+    shortCandidates: shortCandidatePool.slice(0, 3),
+    tradFiLongCandidates: tradFiLongCandidatePool.slice(0, 3),
+    tradFiShortCandidates: tradFiShortCandidatePool.slice(0, 3),
+
+    // V4.3 历史层使用
+    longCandidatePool,
+    shortCandidatePool,
+    tradFiLongCandidatePool,
+    tradFiShortCandidatePool,
   };
 }
 
