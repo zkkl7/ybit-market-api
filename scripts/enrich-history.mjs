@@ -45,6 +45,10 @@ function compactCandidate(c) {
     finalCandidateScore:
       c.finalCandidateScore ?? c.candidateQuality,
 
+    entrySignal: c.entrySignal ?? null,
+    timingScore: c.timingScore ?? null,
+    timingRiskFlags: c.timingRiskFlags ?? [],
+
     price: c.keyMetrics?.price ?? null,
 
     oi15mPct: c.keyMetrics?.oi15mPct ?? null,
