@@ -1,0 +1,128 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+
+const source = readFileSync('/mnt/data/scan-v42.js', 'utf8');
+function load() {
+  const context = vm.createContext({
+    fetch: async () => { throw new Error('unexpected network'); },
+    URLSearchParams,
+    process: { env: {} },
+    console,
+  });
+  const transformed = source
+    .replace('export default async function handler', 'async function handler')
+    .replace(/export \{ marketClassification, crossExchangeSummary, evaluateCandidate, buildCandidateLists \};/, '') +
+    '\nglobalThis.api = { marketClassification, crossExchangeSummary, evaluateCandidate, buildCandidateLists };';
+  vm.runInContext(transformed, context);
+  return context.api;
+}
+const api = load();
+
+const base = {
+  symbol: 'TESTUSDT', price: 1,
+  executionState: 'POSITION_BUILD', executionRisk: null,
+  price5mPct: 0.2, price15mPct: 0.5, price1hPct: 1.5,
+  oi15mPct: 0.8, oi30mPct: 1.8, oi1hPct: 4, oi2hPct: 5,
+  latestOiStep: 0.8, maxPositiveOiStep: 1.2, consecutivePositive: 3,
+  buildQuality: 85, oiHighRetention: 0.99, fundingPct: 0.005,
+  priceStructure: { support: 0.95, recentLow: 0.98, keyLevel: 1.01, supportHeld: false, keyLevelReclaimed: true, lowerLows: false },
+  flow5m: {
+    recentPrice30mPct: 1.2, recentOi30mPct: 1.8,
+    recentSteps: [
+      { state: 'LONG_BUILD' }, { state: 'LONG_BUILD' }, { state: 'POSITION_BUILD' },
+      { state: 'LONG_BUILD' }, { state: 'MIXED' }, { state: 'LONG_BUILD' },
+    ],
+  },
+};
+
+test('sustained long structure ranks as actionable', () => {
+  const out = api.evaluateCandidate(base, 'LONG');
+  assert.notEqual(out.candidateState, 'WATCH');
+  assert.ok(out.candidateQuality >= 52);
+});
+
+test('FIL-like slow long with decayed latest 15m and no price structure is downgraded', () => {
+  const row = {
+    ...base,
+    oi15mPct: 0.05,
+    latestOiStep: 0.05,
+    consecutivePositive: 1,
+    price5mPct: -0.1,
+    price15mPct: -0.2,
+    price1hPct: 0.3,
+    priceStructure: { supportHeld: false, keyLevelReclaimed: false, lowerLows: false },
+    flow5m: { recentPrice30mPct: -0.2, recentOi30mPct: 0.1, recentSteps: [{state:'MIXED'}] },
+  };
+  assert.equal(api.evaluateCandidate(row, 'LONG').candidateState, 'WATCH');
+});
+
+test('sustained slow short ranks as actionable', () => {
+  const row = {
+    ...base,
+    executionState: 'SHORT_BUILD',
+    price5mPct: -0.3, price15mPct: -0.8, price1hPct: -2,
+    oi15mPct: 0.9, oi30mPct: 2.2, oi1hPct: 5,
+    latestOiStep: 0.9,
+    priceStructure: { lowerLows: true },
+    flow5m: {
+      recentPrice30mPct: -2.5, recentOi30mPct: 2.3,
+      recentSteps: [{state:'SHORT_BUILD'},{state:'SHORT_BUILD'},{state:'MIXED'},{state:'SHORT_BUILD'},{state:'MIXED'},{state:'SHORT_BUILD'}],
+    },
+  };
+  const out = api.evaluateCandidate(row, 'SHORT');
+  assert.notEqual(out.candidateState, 'WATCH');
+});
+
+test('KMNO-like historical short build without latest 15m continuation is downgraded', () => {
+  const row = {
+    ...base,
+    executionState: 'SHORT_BUILD',
+    price5mPct: 0.2, price15mPct: -0.2, price1hPct: -1,
+    oi15mPct: -0.4, oi30mPct: 1.5, oi1hPct: 4,
+    oiHighRetention: 0.93,
+    priceStructure: { lowerLows: true },
+    flow5m: {
+      recentPrice30mPct: -1.5, recentOi30mPct: -1.2,
+      recentSteps: [{state:'SHORT_BUILD'},{state:'SHORT_BUILD'},{state:'SHORT_BUILD'},{state:'MIXED'},{state:'MIXED'},{state:'DELEVERAGING'}],
+    },
+  };
+  assert.equal(api.evaluateCandidate(row, 'SHORT').candidateState, 'WATCH');
+});
+
+test('mixed cross-exchange data lowers quality but does not hard filter', () => {
+  const confirmed = api.evaluateCandidate({
+    ...base,
+    crossExchange: { status:'ok', oi1hPct:2, oi15mPct:1, oi5mPct:0.2, bybitOiSharePct:30, aggregatedFundingPct:0 },
+  }, 'LONG');
+  const mixed = api.evaluateCandidate({
+    ...base,
+    crossExchange: { status:'ok', oi1hPct:2, oi15mPct:-0.2, oi5mPct:-0.1, bybitOiSharePct:30, aggregatedFundingPct:0 },
+  }, 'LONG');
+  assert.ok(confirmed.candidateQuality > mixed.candidateQuality);
+  assert.notEqual(mixed.candidateState, undefined);
+});
+
+test('TradFi perp is explicitly tagged and penalized', () => {
+  const crypto = api.evaluateCandidate(base, 'LONG');
+  const tradfi = api.evaluateCandidate({ ...base, symbol:'SOFIUSDT' }, 'LONG');
+  assert.equal(tradfi.marketType, 'TRADFI_PERP');
+  assert.equal(tradfi.riskTag, 'TRADFI_EVENT_SENSITIVE');
+  assert.ok(tradfi.candidateQuality < crypto.candidateQuality);
+});
+
+test('candidate lists cap at 3+3 and do not include WATCH', () => {
+  const longs = Array.from({length:5}, (_, i) => ({ ...base, symbol:`L${i}USDT` }));
+  const shorts = Array.from({length:5}, (_, i) => ({
+    ...base, symbol:`S${i}USDT`, executionState:'SHORT_BUILD',
+    price5mPct:-0.3, price15mPct:-0.8, price1hPct:-2,
+    oi15mPct:0.9, oi30mPct:2, oi1hPct:4,
+    priceStructure:{lowerLows:true},
+    flow5m:{recentPrice30mPct:-2,recentOi30mPct:2,recentSteps:[{state:'SHORT_BUILD'},{state:'SHORT_BUILD'},{state:'SHORT_BUILD'}]},
+  }));
+  const out = api.buildCandidateLists({ executionStates:[...longs,...shorts], candidates:[] });
+  assert.equal(out.longCandidates.length, 3);
+  assert.equal(out.shortCandidates.length, 3);
+  assert.ok([...out.longCandidates,...out.shortCandidates].every(x => x.candidateState !== 'WATCH'));
+});
