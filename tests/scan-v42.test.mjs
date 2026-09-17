@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-const source = readFileSync('/mnt/data/scan-v42.js', 'utf8');
+const source = readFileSync(new URL('../api/scan-v42.js', import.meta.url), 'utf8');
 function load() {
   const context = vm.createContext({
     fetch: async () => { throw new Error('unexpected network'); },
@@ -20,10 +20,12 @@ function load() {
 }
 const api = load();
 
+const executable = new Set(['EARLY_ENTRY', 'BREAKOUT_ENTRY', 'RETEST_ENTRY']);
+
 const base = {
   symbol: 'TESTUSDT', price: 1,
   executionState: 'POSITION_BUILD', executionRisk: null,
-  price5mPct: 0.2, price15mPct: 0.5, price1hPct: 1.5,
+  price5mPct: 0.2, price15mPct: 0.5, price1hPct: 1.5, price24hPct: 3,
   oi15mPct: 0.8, oi30mPct: 1.8, oi1hPct: 4, oi2hPct: 5,
   latestOiStep: 0.8, maxPositiveOiStep: 1.2, consecutivePositive: 3,
   buildQuality: 85, oiHighRetention: 0.99, fundingPct: 0.005,
@@ -125,4 +127,53 @@ test('candidate lists cap at 3+3 and do not include WATCH', () => {
   assert.equal(out.longCandidates.length, 3);
   assert.equal(out.shortCandidates.length, 3);
   assert.ok([...out.longCandidates,...out.shortCandidates].every(x => x.candidateState !== 'WATCH'));
+});
+
+test('extended KSM/CROSS longs and crowded AVA shorts cannot trigger entries', () => {
+  for (const [direction, patch] of [
+    ['LONG', { price1hPct: 12.18, price15mPct: 4.7 }],
+    ['LONG', { price24hPct: 38.98, price1hPct: 3.5 }],
+    ['SHORT', { price5mPct: -0.3, price15mPct: -1, price1hPct: -2, fundingPct: -0.7169 }],
+    ['SHORT', { price1hPct: -8 }],
+    ['LONG', { executionRisk: 'EXTENDED' }],
+    ['LONG', { fundingPct: 0.3 }],
+  ]) {
+    const out = api.evaluateCandidate({ ...base, ...patch }, direction);
+    assert.equal(out.entrySignal, 'NO_CHASE');
+    assert.ok(out.timingRiskFlags.length > 0);
+    assert.ok(out.timingScore >= 0 && out.timingScore <= 100);
+  }
+});
+
+test('breakout, retest and early entries are reachable without history', () => {
+  const breakout = api.evaluateCandidate({ ...base, price: 1.01 }, 'LONG');
+  const retest = api.evaluateCandidate({ ...base, price5mPct: -0.2 }, 'LONG');
+  const early = api.evaluateCandidate({ ...base, oiHighRetention: 0.96 }, 'LONG');
+  assert.equal(breakout.entrySignal, 'BREAKOUT_ENTRY');
+  assert.equal(retest.entrySignal, 'RETEST_ENTRY');
+  assert.equal(early.entrySignal, 'EARLY_ENTRY');
+});
+
+test('missing or invalid timing prices and funding cannot create entries', () => {
+  for (const field of ['price', 'price5mPct', 'price15mPct', 'price1hPct', 'price24hPct', 'fundingPct']) {
+    for (const value of [null, undefined, '', 'invalid']) {
+      const out = api.evaluateCandidate({ ...base, [field]: value }, 'LONG');
+      assert.equal(executable.has(out.entrySignal), false, field);
+      assert.ok(out.timingRiskFlags.includes('TIMING_DATA_MISSING'));
+    }
+  }
+});
+
+test('entry pools exclude NO_CHASE and retain separate crypto and TradFi groups', () => {
+  const rows = [
+    ...Array.from({ length: 5 }, (_, i) => ({ ...base, price: 1.01, symbol: 'ENTRY' + i })),
+    { ...base, symbol: 'EXTENDED', price1hPct: 10 },
+    { ...base, symbol: 'SOFIUSDT', price: 1.01 },
+  ];
+  const out = api.buildCandidateLists({ executionStates: rows });
+  assert.equal(out.longEntryCandidates.length, 3);
+  assert.ok(out.longEntryCandidates.every(c => executable.has(c.entrySignal)));
+  assert.ok(out.longEntryCandidates.every(c => c.marketType === 'CRYPTO_PERP'));
+  assert.equal(out.tradFiLongEntryCandidates[0].symbol, 'SOFIUSDT');
+  assert.ok(out.longCandidatePool.some(c => c.entrySignal === 'NO_CHASE'));
 });
