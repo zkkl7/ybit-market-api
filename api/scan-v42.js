@@ -7,8 +7,8 @@ const VERSION = "OI-RADAR-V4.2";
 const TRADFI_SYMBOLS = new Set([
   // 已有
   "SOFIUSDT",
-   "QQQUSDT",
-   "ARMUSDT",
+  "QQQUSDT",
+  "ARMUSDT",
   "MSTUUSDT",
   "NBISUSDT",
   "NVDAUSDT",
