@@ -2,7 +2,7 @@ const BASE_SCAN_URL =
   (typeof process !== "undefined" && process.env?.SCAN_V41_URL) ||
   "https://ybit-market-api.vercel.app/api/scan";
 
-const VERSION = "OI-RADAR-V4.2";
+const VERSION = "OI-RADAR-V4.4";
 
 const TRADFI_SYMBOLS = new Set([
   // 已有
@@ -232,6 +232,417 @@ function candidateState(row, direction, score, persistent) {
   return "PRE_ENTRY";
 }
 
+function entryTiming(row, direction, setupQuality, setupState, xsum) {
+  const numeric = value => value == null || value === "" ? NaN : Number(value);
+  const p5 = numeric(row.price5mPct);
+  const p15 = numeric(row.price15mPct);
+  const p1 = numeric(row.price1hPct);
+  const p24 = numeric(row.price24hPct);
+
+  const o15 = Number(row.oi15mPct ?? 0);
+  const o30 = Number(row.oi30mPct ?? 0);
+  const latestOi = Number(
+    row.latestOiStep ?? row.oi15mPct ?? 0
+  );
+
+  const retention = Number(row.oiHighRetention ?? 0);
+  const funding = numeric(row.fundingPct);
+
+  const price = numeric(row.price);
+  const support = numeric(row.priceStructure?.support);
+  const keyLevel = numeric(row.priceStructure?.keyLevel);
+
+  const freshOi =
+    o15 >= 0.3 &&
+    o30 > 0 &&
+    latestOi > 0;
+
+  const retainedOi =
+    o30 > 0 &&
+    latestOi >= -0.1 &&
+    retention >= 0.97;
+
+  let score = 35;
+
+  const reasons = [];
+  const riskFlags = [];
+
+  /*
+   * Setup 本身只提供一部分 timing 分。
+   * Setup 很强 ≠ 现在就值得追。
+   */
+  if (setupQuality >= 85) {
+    score += 10;
+    reasons.push("setup强");
+  } else if (setupQuality >= 72) {
+    score += 7;
+    reasons.push("setup合格");
+  } else if (setupQuality >= 62) {
+    score += 4;
+  } else {
+    score -= 10;
+    riskFlags.push("SETUP_WEAK");
+  }
+
+  /*
+   * OI freshness
+   */
+  if (freshOi) {
+    score += 18;
+    reasons.push("15M/30M OI持续增仓");
+  } else if (o30 > 0 && latestOi > 0) {
+    score += 8;
+    reasons.push("OI仍为正但15M不足");
+  } else {
+    score -= 15;
+    riskFlags.push("OI_NOT_FRESH");
+  }
+
+  if (retention >= 0.97) {
+    score += 8;
+    reasons.push("OI高保留");
+  } else if (retention < 0.94) {
+    score -= 10;
+    riskFlags.push("OI_LEAK");
+  }
+
+  /*
+   * 跨所只做加分。
+   * LOCAL_ONLY 不再因为没采到数据严重扣 timing。
+   */
+  if (xsum?.confirmation === "CONFIRMED") {
+    score += 8;
+    reasons.push("跨所确认");
+  } else if (xsum?.confirmation === "MIXED") {
+    score += 2;
+  }
+
+  let extendedByPrice = false;
+  let extremeFundingConflict = false;
+
+  if (direction === "LONG") {
+    /*
+     * 1H 位置
+     */
+    if (p1 >= -1 && p1 <= 4.5) {
+      score += 12;
+      reasons.push("1H位置仍合理");
+    } else if (p1 > 4.5 && p1 < 8) {
+      score += 5;
+      riskFlags.push("PRICE_WARM");
+    } else if (p1 >= 8) {
+      score -= 20;
+      extendedByPrice = true;
+      riskFlags.push("PRICE_1H_EXTENDED");
+    } else if (p1 < -2) {
+      score -= 8;
+    }
+
+    /*
+     * 15M 位置
+     */
+    if (p15 >= -0.8 && p15 <= 2.2) {
+      score += 10;
+      reasons.push("15M未过度拉升");
+    } else if (p15 > 2.2 && p15 < 4) {
+      score += 3;
+      riskFlags.push("PRICE_15M_WARM");
+    } else if (p15 >= 4) {
+      score -= 15;
+      extendedByPrice = true;
+      riskFlags.push("PRICE_15M_EXTENDED");
+    } else if (p15 < -1.5) {
+      score -= 8;
+    }
+
+    /*
+     * 5M 当前触发位置
+     */
+    if (p5 >= 0.1 && p5 <= 1.2) {
+      score += 8;
+      reasons.push("5M温和推进");
+    } else if (p5 >= -0.8 && p5 < 0.1) {
+      score += 7;
+      reasons.push("5M健康回踩");
+    } else if (p5 > 1.5) {
+      score -= 10;
+      riskFlags.push("5M_SPIKE");
+    } else if (p5 < -1) {
+      score -= 10;
+      riskFlags.push("5M_BREAKDOWN");
+    }
+
+    /*
+     * 关键位
+     */
+    if (
+      Number.isFinite(price) &&
+      Number.isFinite(keyLevel) &&
+      price >= keyLevel * 0.995
+    ) {
+      score += 8;
+      reasons.push("价格位于关键位附近/上方");
+    } else if (
+      Number.isFinite(price) &&
+      Number.isFinite(support) &&
+      price >= support
+    ) {
+      score += 4;
+    }
+
+    /*
+     * 24H 已经大涨，同时1H还在继续拉，
+     * 即使结构正确，也不追。
+     */
+    if (p24 >= 30 && p1 >= 3) {
+      score -= 12;
+      extendedByPrice = true;
+      riskFlags.push("24H_EXTENDED");
+    } else if (p24 >= 20) {
+      score -= 4;
+      riskFlags.push("24H_WARM");
+    }
+
+    /*
+     * Long 最怕正 funding 已经极度拥挤。
+     * 负 funding 反而可以是 squeeze fuel。
+     */
+    if (funding >= 0.3) {
+      score -= 20;
+      extremeFundingConflict = true;
+      riskFlags.push("EXTREME_LONG_FUNDING");
+    } else if (funding >= 0.1) {
+      score -= 10;
+      riskFlags.push("LONG_FUNDING_CROWDED");
+    } else if (funding <= -0.05) {
+      score += 3;
+      reasons.push("负Funding提供潜在挤空燃料");
+    }
+  } else {
+    /*
+     * SHORT 完全镜像处理。
+     */
+    if (p1 <= 1 && p1 >= -4.5) {
+      score += 12;
+      reasons.push("1H位置仍合理");
+    } else if (p1 < -4.5 && p1 > -8) {
+      score += 5;
+      riskFlags.push("PRICE_WARM");
+    } else if (p1 <= -8) {
+      score -= 20;
+      extendedByPrice = true;
+      riskFlags.push("PRICE_1H_EXTENDED");
+    } else if (p1 > 2) {
+      score -= 8;
+    }
+
+    if (p15 <= 0.8 && p15 >= -2.2) {
+      score += 10;
+      reasons.push("15M未过度下跌");
+    } else if (p15 < -2.2 && p15 > -4) {
+      score += 3;
+      riskFlags.push("PRICE_15M_WARM");
+    } else if (p15 <= -4) {
+      score -= 15;
+      extendedByPrice = true;
+      riskFlags.push("PRICE_15M_EXTENDED");
+    } else if (p15 > 1.5) {
+      score -= 8;
+    }
+
+    if (p5 <= -0.1 && p5 >= -1.2) {
+      score += 8;
+      reasons.push("5M温和下破");
+    } else if (p5 > -0.1 && p5 <= 0.8) {
+      score += 7;
+      reasons.push("5M反抽可控");
+    } else if (p5 < -1.5) {
+      score -= 10;
+      riskFlags.push("5M_SPIKE");
+    } else if (p5 > 1) {
+      score -= 10;
+      riskFlags.push("5M_REBOUND");
+    }
+
+    if (
+      Number.isFinite(price) &&
+      Number.isFinite(keyLevel) &&
+      price <= keyLevel * 1.005
+    ) {
+      score += 8;
+      reasons.push("价格位于关键位附近/下方");
+    }
+
+    if (row.priceStructure?.lowerLows === true) {
+      score += 5;
+      reasons.push("lower lows延续");
+    }
+
+    if (p24 <= -30 && p1 <= -3) {
+      score -= 12;
+      extendedByPrice = true;
+      riskFlags.push("24H_EXTENDED");
+    } else if (p24 <= -20) {
+      score -= 4;
+      riskFlags.push("24H_WARM");
+    }
+
+    /*
+     * Short 最怕 Funding 已经极负，
+     * 因为空头过度拥挤，容易被 squeeze。
+     */
+    if (funding <= -0.3) {
+      score -= 20;
+      extremeFundingConflict = true;
+      riskFlags.push("EXTREME_SHORT_FUNDING");
+    } else if (funding <= -0.1) {
+      score -= 10;
+      riskFlags.push("SHORT_FUNDING_CROWDED");
+    } else if (funding >= 0.05) {
+      score += 3;
+      reasons.push("正Funding对空头有利");
+    }
+  }
+
+  /*
+   * OI spike + 价格已经同步冲出去：
+   * 通常不是最佳新开仓位置。
+   */
+  if (
+    row.isOiSpike === true &&
+    Math.abs(p15) >= 2
+  ) {
+    score -= 12;
+    riskFlags.push("OI_SPIKE_CHASE_RISK");
+  }
+
+  /*
+   * V4.1 已经判断 EXTENDED 的直接高风险。
+   */
+  if (row.executionRisk === "EXTENDED") {
+    score -= 25;
+    riskFlags.push("SOURCE_EXTENDED");
+  }
+
+  score = Math.max(0, Math.min(100, score));
+
+  const hardNoChase =
+    row.executionRisk === "EXTENDED" ||
+    extendedByPrice ||
+    extremeFundingConflict;
+
+  /*
+   * 三种真正的 entry trigger
+   */
+  const breakout =
+    direction === "LONG"
+      ? (
+          p5 >= 0.1 &&
+          p5 <= 1.2 &&
+          (
+            !Number.isFinite(keyLevel) ||
+            !Number.isFinite(price) ||
+            price >= keyLevel * 0.995
+          )
+        )
+      : (
+          p5 <= -0.1 &&
+          p5 >= -1.2 &&
+          (
+            !Number.isFinite(keyLevel) ||
+            !Number.isFinite(price) ||
+            price <= keyLevel * 1.005
+          )
+        );
+
+  const retest =
+    direction === "LONG"
+      ? (
+          p5 >= -0.8 &&
+          p5 < 0.1 &&
+          retention >= 0.97 &&
+          (
+            !Number.isFinite(support) ||
+            !Number.isFinite(price) ||
+            price >= support
+          )
+        )
+      : (
+          p5 > -0.1 &&
+          p5 <= 0.8 &&
+          retention >= 0.97 &&
+          (
+            row.priceStructure?.lowerLows === true ||
+            !Number.isFinite(keyLevel) ||
+            !Number.isFinite(price) ||
+            price <= keyLevel * 1.005
+          )
+        );
+
+  /*
+   * EARLY_ENTRY：
+   * 价格还没启动很多，但 OI 已经开始建仓。
+   */
+  const early =
+    direction === "LONG"
+      ? (
+          p1 >= -0.5 &&
+          p1 <= 3 &&
+          p15 >= -0.5 &&
+          p15 <= 1.5 &&
+          p5 >= -0.3 &&
+          p5 <= 0.8
+        )
+      : (
+          p1 <= 0.5 &&
+          p1 >= -3 &&
+          p15 <= 0.5 &&
+          p15 >= -1.5 &&
+          p5 <= 0.3 &&
+          p5 >= -0.8
+        );
+
+  const validTimingData = [p5, p15, p1, p24, funding, price].every(Number.isFinite) && price > 0;
+  if (!validTimingData) riskFlags.push("TIMING_DATA_MISSING");
+
+  let entrySignal = "WAIT";
+
+  if (hardNoChase) {
+    entrySignal = "NO_CHASE";
+  } else if (!validTimingData || setupState === "WATCH") {
+    entrySignal = "WAIT";
+  } else if (
+    score >= 75 &&
+    breakout &&
+    freshOi
+  ) {
+    entrySignal = "BREAKOUT_ENTRY";
+  } else if (
+    score >= 72 &&
+    retest &&
+    retainedOi
+  ) {
+    entrySignal = "RETEST_ENTRY";
+  } else if (
+    score >= 78 &&
+    early &&
+    freshOi
+  ) {
+    entrySignal = "EARLY_ENTRY";
+  } else if (score >= 62) {
+    entrySignal = "ARMED";
+  }
+
+  return {
+    timingScore: round(score, 1),
+    entrySignal,
+    timingReason: reasons.join("；"),
+    timingRiskFlags: [...new Set(riskFlags)],
+    freshOi,
+    retainedOi,
+  };
+}
+
 function reasonFor(row, direction, persistent, xsum) {
   const bits = [];
   if (direction === "LONG") {
@@ -254,46 +665,153 @@ function reasonFor(row, direction, persistent, xsum) {
 
 function evaluateCandidate(row, direction) {
   const market = marketClassification(row.symbol);
-  const persistent = direction === "LONG" ? longPersistence(row) : shortPersistence(row);
-  const xsum = crossExchangeSummary(row, direction);
-  let score = persistent.score + xsum.scoreAdjustment;
 
-  if (row.executionRisk === "EXTENDED") score -= 25;
-  if (market.marketType === "TRADFI_PERP") score -= 12;
+  const persistent =
+    direction === "LONG"
+      ? longPersistence(row)
+      : shortPersistence(row);
 
-  const persistenceOk = direction === "LONG"
-    ? (persistent.oiContinuation || persistent.priceContinuation)
-    : persistent.persistence;
-  const state = candidateState(row, direction, score, persistenceOk);
+  const xsum =
+    crossExchangeSummary(row, direction);
+
+  let score =
+    persistent.score +
+    xsum.scoreAdjustment;
+
+  if (row.executionRisk === "EXTENDED") {
+    score -= 25;
+  }
+
+  if (market.marketType === "TRADFI_PERP") {
+    score -= 12;
+  }
+
+  const persistenceOk =
+    direction === "LONG"
+      ? (
+          persistent.oiContinuation ||
+          persistent.priceContinuation
+        )
+      : persistent.persistence;
+
+  /*
+   * candidateState 继续保留。
+   * 它代表 SETUP 状态，而不是最终入场状态。
+   */
+  const state = candidateState(
+    row,
+    direction,
+    score,
+    persistenceOk
+  );
+
+  const candidateQuality = round(
+    Math.max(0, Math.min(100, score)),
+    1
+  );
+
+  /*
+   * 新的 Timing Layer
+   */
+  const timing = entryTiming(
+    row,
+    direction,
+    candidateQuality,
+    state,
+    xsum
+  );
 
   return {
     symbol: row.symbol,
     direction,
+
+    /*
+     * SETUP 层
+     */
     candidateState: state,
-    candidateQuality: round(Math.max(0, Math.min(100, score)), 1),
-    persistenceScore: round(Math.max(0, Math.min(100, persistent.score)), 1),
-    reason: reasonFor(row, direction, persistent, xsum),
+    candidateQuality,
+
+    persistenceScore: round(
+      Math.max(
+        0,
+        Math.min(100, persistent.score)
+      ),
+      1
+    ),
+
+    reason: reasonFor(
+      row,
+      direction,
+      persistent,
+      xsum
+    ),
+
+    /*
+     * ENTRY 层
+     */
+    entrySignal: timing.entrySignal,
+    timingScore: timing.timingScore,
+    timingReason: timing.timingReason,
+    timingRiskFlags: timing.timingRiskFlags,
+
     marketType: market.marketType,
     riskTag: market.riskTag,
+
     keyMetrics: {
       price: row.price ?? null,
-      price5mPct: row.price5mPct ?? null,
-      price15mPct: row.price15mPct ?? null,
-      price1hPct: row.price1hPct ?? null,
-      oi15mPct: row.oi15mPct ?? null,
-      oi30mPct: row.oi30mPct ?? null,
-      oi1hPct: row.oi1hPct ?? null,
-      oi2hPct: row.oi2hPct ?? null,
-      latestOiStep: row.latestOiStep ?? null,
-      oiHighRetention: row.oiHighRetention ?? null,
-      fundingPct: row.fundingPct ?? null,
-      support: row.priceStructure?.support ?? null,
-      recentLow: row.priceStructure?.recentLow ?? null,
-      keyLevel: row.priceStructure?.keyLevel ?? null,
+
+      price5mPct:
+        row.price5mPct ?? null,
+
+      price15mPct:
+        row.price15mPct ?? null,
+
+      price1hPct:
+        row.price1hPct ?? null,
+
+      price24hPct:
+        row.price24hPct ?? null,
+
+      oi15mPct:
+        row.oi15mPct ?? null,
+
+      oi30mPct:
+        row.oi30mPct ?? null,
+
+      oi1hPct:
+        row.oi1hPct ?? null,
+
+      oi2hPct:
+        row.oi2hPct ?? null,
+
+      latestOiStep:
+        row.latestOiStep ?? null,
+
+      oiHighRetention:
+        row.oiHighRetention ?? null,
+
+      fundingPct:
+        row.fundingPct ?? null,
+
+      support:
+        row.priceStructure?.support ?? null,
+
+      recentLow:
+        row.priceStructure?.recentLow ?? null,
+
+      keyLevel:
+        row.priceStructure?.keyLevel ?? null,
     },
+
     crossExchangeSummary: xsum,
-    executionRisk: row.executionRisk || market.riskTag || null,
-    sourceExecutionState: row.executionState,
+
+    executionRisk:
+      row.executionRisk ||
+      market.riskTag ||
+      null,
+
+    sourceExecutionState:
+      row.executionState,
   };
 }
 
@@ -349,7 +867,17 @@ function buildCandidateLists(base) {
     .filter(x => x.marketType === "TRADFI_PERP")
     .slice(0, 10);
 
+  const executableSignals = new Set(["EARLY_ENTRY", "BREAKOUT_ENTRY", "RETEST_ENTRY"]);
+  const pickEntries = pool => [...pool]
+    .filter(candidate => executableSignals.has(candidate.entrySignal))
+    .sort((a, b) => b.timingScore - a.timingScore)
+    .slice(0, 3);
+
   return {
+    longEntryCandidates: pickEntries(longCandidatePool),
+    shortEntryCandidates: pickEntries(shortCandidatePool),
+    tradFiLongEntryCandidates: pickEntries(tradFiLongCandidatePool),
+    tradFiShortEntryCandidates: pickEntries(tradFiShortCandidatePool),
     // 保留原来的兼容输出
     longCandidates: longCandidatePool.slice(0, 3),
     shortCandidates: shortCandidatePool.slice(0, 3),
@@ -367,7 +895,7 @@ function buildCandidateLists(base) {
 export default async function handler(req, res) {
   try {
     const response = await fetch(BASE_SCAN_URL, {
-      headers: { Accept: "application/json", "User-Agent": "Bybit-OI-Radar/4.2" },
+      headers: { Accept: "application/json", "User-Agent": "Bybit-OI-Radar/4.4" },
     });
     const text = await response.text();
     if (!response.ok) throw new Error(`V4.1 upstream HTTP ${response.status}: ${text.slice(0, 160)}`);
@@ -387,7 +915,7 @@ export default async function handler(req, res) {
           tradFiPerpsSeparated: true,
         },
       },
-      scoreMeaning: "V4.2 candidateQuality ranks persistence/tradeability; legacy score remains radar attention only.",
+      scoreMeaning: "candidateQuality measures setup quality; timingScore measures current entry quality. entrySignal is the execution layer and does not require multi-snapshot history confirmation.",
       ...lists,
     });
   } catch (error) {
