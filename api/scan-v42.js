@@ -5,9 +5,69 @@ const BASE_SCAN_URL =
 const VERSION = "OI-RADAR-V4.2";
 
 const TRADFI_SYMBOLS = new Set([
-  "SOFIUSDT", "NBISUSDT", "NVDAUSDT", "HOODUSDT", "SNDKUSDT",
-  "SKHYUSDT", "AVGOUSDT", "CRWVUSDT", "BEUSDT", "BMNRUSDT",
+  // 已有
+  "SOFIUSDT",
+  "NBISUSDT",
+  "NVDAUSDT",
+  "HOODUSDT",
+  "SNDKUSDT",
+  "SKHYUSDT",
+  "AVGOUSDT",
+  "CRWVUSDT",
+  "BEUSDT",
+  "BMNRUSDT",
   "UVXYUSDT",
+
+  // 这次漏掉的
+  "CRWDUSDT",
+  "SPCHUSDT",
+
+  // Bybit 官方明确列出的 TradFi perpetual
+  "CBRSUSDT",
+  "ONDSUSDT",
+  "SMCIUSDT",
+  "PURRUSDT",
+  "MSTRUSDT",
+  "RKLBUSDT",
+  "QNTXUSDT",
+  "STXXUSDT",
+  "OPENAIUSDT",
+  "COINUSDT",
+  "FLNCUSDT",
+  "HPEUSDT",
+  "ANTHROPICUSDT",
+  "CRCLUSDT",
+  "COHRUSDT",
+  "ALABUSDT",
+  "AEHRUSDT",
+  "LITEUSDT",
+  "ASTSUSDT",
+  "AXTIUSDT",
+  "CIENUSDT",
+  "BNCUSDT",
+  "NOKIAUSDT",
+  "BBXUSDT",
+  "ADBEUSDT",
+  "POETUSDT",
+  "AAOIUSDT",
+  "CRDOUSDT",
+  "MVLLUSDT",
+  "RDWUSDT",
+  "DRAMUSDT",
+  "IRENUSDT",
+  "USARUSDT",
+  "HIMSUSDT",
+  "FWDIUSDT",
+
+  // Bybit 官方教程里明确作为股票/ETF perpetual 示例
+  "TSLAUSDT",
+  "GOOGLUSDT",
+  "MUUSDT",
+  "SOXLUSDT",
+  "KORUUSDT",
+  "SAMSUNGUSDT",
+  "SKHYNIXUSDT",
+  "HYUNDAIUSDT",
 ]);
 
 const round = (value, decimals = 1) =>
