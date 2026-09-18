@@ -28,7 +28,9 @@ export const RULES = Object.freeze({
   sameCandleOrder: "ADVERSE_FIRST_CONSERVATIVE",
   terminalStatusLocked: true,
   maeMfeContinueAfterTerminalStatus: true,
-  entryCandlePolicy: "first fully closed 5m candle opening at or after entryTime",
+  entryCandlePolicy: "ADVERSE_ONLY_FULL_CANDLE_CONSERVATIVE",
+  entryCandlePolicyDetail:
+    "For a partial entry candle, use the full candle only for MAE and stop detection; ignore its favorable move, MFE, and profit hit because pre-entry intrabar order is unknown.",
 });
 
 const round = (value, decimals = 4) =>
@@ -129,6 +131,7 @@ export function addSnapshotEntries(ledger, latest) {
         status: "OPEN",
         deepDrawdownSuccess: false,
         mfeBucket: null,
+        entryCandleChecked: false,
         checkedThrough: entryTime,
         updatedAt: entryTime,
       };
@@ -161,15 +164,21 @@ export function applyCandles(entry, candles) {
 
   let changed = false;
   const checkedMs = Date.parse(entry.checkedThrough ?? entry.entryTime);
-  const firstOpenMs = Math.ceil(Date.parse(entry.entryTime) / INTERVAL_MS) * INTERVAL_MS;
+  const entryMs = Date.parse(entry.entryTime);
+  const entryOpenMs = Math.floor(entryMs / INTERVAL_MS) * INTERVAL_MS;
 
   for (const candle of sorted) {
     const closeMs = candle.openTime + INTERVAL_MS;
-    if (candle.openTime < firstOpenMs || closeMs <= checkedMs) continue;
+    if (candle.openTime < entryOpenMs || closeMs <= checkedMs) continue;
 
     const favorablePrice = entry.direction === "LONG" ? candle.high : candle.low;
     const adversePrice = entry.direction === "LONG" ? candle.low : candle.high;
-    const favorablePct = Math.max(0, moveForPrice(entry, favorablePrice));
+    const partialEntryCandle = candle.openTime === entryOpenMs && entryMs > entryOpenMs;
+    // Pre-entry intrabar movement is unknowable. Count the whole candle's
+    // adverse side, but never grant favorable excursion or success from it.
+    const favorablePct = partialEntryCandle
+      ? 0
+      : Math.max(0, moveForPrice(entry, favorablePrice));
     const adversePct = Math.min(0, moveForPrice(entry, adversePrice));
     const hitAt = new Date(closeMs).toISOString();
 
@@ -205,6 +214,7 @@ export function applyCandles(entry, candles) {
     }
 
     entry.mfeBucket = mfeBucket(entry.mfePct);
+    if (candle.openTime === entryOpenMs) entry.entryCandleChecked = true;
     entry.checkedThrough = hitAt;
     entry.updatedAt = hitAt;
     changed = true;
@@ -215,7 +225,10 @@ export function applyCandles(entry, candles) {
 function nextOpenTime(entry) {
   const checked = Date.parse(entry.checkedThrough ?? entry.entryTime);
   const entryTime = Date.parse(entry.entryTime);
-  return Math.ceil(Math.max(checked, entryTime) / INTERVAL_MS) * INTERVAL_MS;
+  if (checked <= entryTime) {
+    return Math.floor(entryTime / INTERVAL_MS) * INTERVAL_MS;
+  }
+  return Math.ceil(checked / INTERVAL_MS) * INTERVAL_MS;
 }
 
 export async function fetchClosedKlines(symbol, startMs, nowMs, fetchImpl = fetch) {
