@@ -133,17 +133,31 @@ test("FAIL stays locked while later MFE continues updating", () => {
   assert.ok(row.firstProfitHitAt);
 });
 
-test("entry candle is excluded and checkedThrough prevents reprocessing", () => {
+test("partial entry candle counts only adverse movement and prevents reprocessing", () => {
   const row = entry();
   row.entryTime = new Date(T0 + 120000).toISOString();
   row.checkedThrough = row.entryTime;
-  applyCandles(row, [candle(0, 110, 90), candle(1, 100.6, 99.8)]);
-  assert.equal(row.status, "SUCCESS");
-  assert.equal(row.maePct, -0.2);
+  applyCandles(row, [candle(0, 110, 96), candle(1, 100.6, 99.8)]);
+  assert.equal(row.status, "FAIL");
+  assert.equal(row.mfePct, 0.6);
+  assert.equal(row.maePct, -4);
+  assert.equal(row.stopHitAt, new Date(T0 + 5 * 60000).toISOString());
+  assert.equal(row.firstProfitHitAt, new Date(T0 + 10 * 60000).toISOString());
+  assert.equal(row.entryCandleChecked, true);
   const checked = row.checkedThrough;
   assert.equal(applyCandles(row, [candle(1, 120, 80)]), false);
   assert.equal(row.checkedThrough, checked);
-  assert.equal(row.maePct, -0.2);
+  assert.equal(row.maePct, -4);
+});
+
+test("partial entry candle cannot create a favorable hit", () => {
+  const row = entry();
+  row.entryTime = new Date(T0 + 120000).toISOString();
+  row.checkedThrough = row.entryTime;
+  applyCandles(row, [candle(0, 110, 99.5)]);
+  assert.equal(row.status, "OPEN");
+  assert.equal(row.mfePct, 0);
+  assert.equal(row.firstProfitHitAt, null);
 });
 
 test("snapshot time falls back and non-executable signals are ignored", () => {
