@@ -713,57 +713,54 @@ function evaluateCandidate(row, direction) {
   /*
    * 新的 Timing Layer
    */
-  const timing = entryTiming(
-  const riskFlags = timing.timingRiskFlags || [];
+const timing = entryTiming(
+  row,
+  direction,
+  candidateQuality,
+  state,
+  xsum
+);
 
-  const hasExtendedRisk = riskFlags.some(flag =>
-    [
-      "PRICE_1H_EXTENDED",
-      "PRICE_15M_EXTENDED",
-      "24H_EXTENDED",
-      "SOURCE_EXTENDED",
-    ].includes(flag)
-  );
+const riskFlags = timing.timingRiskFlags || [];
 
-  const hasBreakdownRisk = riskFlags.some(flag =>
-    [
-      "5M_BREAKDOWN",
-    ].includes(flag)
-  );
+const hasExtendedRisk = riskFlags.some(flag =>
+  [
+    "PRICE_1H_EXTENDED",
+    "PRICE_15M_EXTENDED",
+    "24H_EXTENDED",
+    "SOURCE_EXTENDED",
+  ].includes(flag)
+);
 
-  const oi15 = row.oi15mPct ?? 0;
-  const oi30 = row.oi30mPct ?? 0;
-  const oi1h = row.oi1hPct ?? 0;
+const hasBreakdownRisk = riskFlags.includes("5M_BREAKDOWN");
 
-  const strongOiContinuation =
-    oi15 >= 3 &&
-    oi30 >= 5 &&
-    oi1h >= 5;
+const oi15 = row.oi15mPct ?? 0;
+const oi30 = row.oi30mPct ?? 0;
+const oi1h = row.oi1hPct ?? 0;
 
-  const manualChaseAlert =
-    timing.entrySignal === "NO_CHASE" &&
-    hasExtendedRisk &&
-    strongOiContinuation &&
-    !hasBreakdownRisk
-      ? {
-          enabled: true,
-          type: "TREND_CONTINUATION",
-          riskLevel: "HIGH",
-          message:
-            "高风险趋势延续候选，当前仍为 NO_CHASE，非正式 Entry，请人工决定是否参与",
-        }
-      : {
-          enabled: false,
-          type: null,
-          riskLevel: null,
-          message: null,
-        };
-    row,
-    direction,
-    candidateQuality,
-    state,
-    xsum
-  );
+const strongOiContinuation =
+  oi15 >= 3 &&
+  oi30 >= 5 &&
+  oi1h >= 5;
+
+const manualChaseAlert =
+  timing.entrySignal === "NO_CHASE" &&
+  hasExtendedRisk &&
+  strongOiContinuation &&
+  !hasBreakdownRisk
+    ? {
+        enabled: true,
+        type: "TREND_CONTINUATION",
+        riskLevel: "HIGH",
+        message:
+          "高风险趋势延续候选，当前仍为 NO_CHASE，非正式 Entry，请人工决定是否参与",
+      }
+    : {
+        enabled: false,
+        type: null,
+        riskLevel: null,
+        message: null,
+      };
 
   return {
     symbol: row.symbol,
