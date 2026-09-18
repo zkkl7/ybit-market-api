@@ -1,6 +1,6 @@
 {
   "version": "ENTRY-BACKTEST-V1",
-  "updatedAt": "2026-09-18T08:32:46.996Z",
+  "updatedAt": "2026-09-18T08:54:04.631Z",
   "rules": {
     "leverageReference": "10x",
     "pnlUnit": "underlying_pct",
@@ -17,8 +17,8 @@
     "entryCandlePolicyDetail": "For a partial entry candle, use the full candle only for MAE and stop detection; ignore its favorable move, MFE, and profit hit because pre-entry intrabar order is unknown."
   },
   "summary": {
-    "total": 33,
-    "open": 31,
+    "total": 36,
+    "open": 34,
     "success": 2,
     "fail": 0,
     "deepDrawdownSuccess": 0,
@@ -691,6 +691,66 @@
       "entryCandleChecked": false,
       "checkedThrough": "2026-09-18T08:32:41.469Z",
       "updatedAt": "2026-09-18T08:32:41.469Z"
+    },
+    {
+      "symbol": "STRKUSDT",
+      "direction": "LONG",
+      "entrySignal": "BREAKOUT_ENTRY",
+      "entryPrice": 0.03502,
+      "entryTime": "2026-09-18T08:53:59.262Z",
+      "maePct": 0,
+      "mfePct": 0,
+      "maePrice": 0.03502,
+      "mfePrice": 0.03502,
+      "maeBeforeSuccessPct": 0,
+      "firstProfitHitAt": null,
+      "stopHitAt": null,
+      "status": "OPEN",
+      "deepDrawdownSuccess": false,
+      "mfeBucket": null,
+      "entryCandleChecked": false,
+      "checkedThrough": "2026-09-18T08:53:59.262Z",
+      "updatedAt": "2026-09-18T08:53:59.262Z"
+    },
+    {
+      "symbol": "PYTHUSDT",
+      "direction": "LONG",
+      "entrySignal": "RETEST_ENTRY",
+      "entryPrice": 0.06066,
+      "entryTime": "2026-09-18T08:53:59.262Z",
+      "maePct": 0,
+      "mfePct": 0,
+      "maePrice": 0.06066,
+      "mfePrice": 0.06066,
+      "maeBeforeSuccessPct": 0,
+      "firstProfitHitAt": null,
+      "stopHitAt": null,
+      "status": "OPEN",
+      "deepDrawdownSuccess": false,
+      "mfeBucket": null,
+      "entryCandleChecked": false,
+      "checkedThrough": "2026-09-18T08:53:59.262Z",
+      "updatedAt": "2026-09-18T08:53:59.262Z"
+    },
+    {
+      "symbol": "FLOCKUSDT",
+      "direction": "SHORT",
+      "entrySignal": "BREAKOUT_ENTRY",
+      "entryPrice": 0.07048,
+      "entryTime": "2026-09-18T08:53:59.262Z",
+      "maePct": 0,
+      "mfePct": 0,
+      "maePrice": 0.07048,
+      "mfePrice": 0.07048,
+      "maeBeforeSuccessPct": 0,
+      "firstProfitHitAt": null,
+      "stopHitAt": null,
+      "status": "OPEN",
+      "deepDrawdownSuccess": false,
+      "mfeBucket": null,
+      "entryCandleChecked": false,
+      "checkedThrough": "2026-09-18T08:53:59.262Z",
+      "updatedAt": "2026-09-18T08:53:59.262Z"
     }
   ]
 }
