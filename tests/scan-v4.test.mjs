@@ -149,6 +149,7 @@ test('handler keeps market/discovery scope, adds bounded reduction lane and prop
   const symbols = [
     ...Array.from({ length: 85 }, (_, i) => `BUILD${i}USDT`),
     ...Array.from({ length: 25 }, (_, i) => `COVER${i}USDT`),
+    ...Array.from({ length: 20 }, (_, i) => `LOW${i}USDT`),
     'BTCUSDC', 'FUTUREUSDT', 'HALTEDUSDT', 'DUSTUSDT',
   ];
   const requests = [];
@@ -157,7 +158,9 @@ test('handler keeps market/discovery scope, adds bounded reduction lane and prop
     requests.push([u.pathname, symbol]);
     let result;
     if (u.pathname.endsWith('/tickers')) result = { list: symbols.map(symbol => ({ symbol,
-      lastPrice: '100', price24hPcnt: '0', turnover24h: symbol === 'DUSTUSDT' ? '1000' : '1000000',
+      lastPrice: '100',
+      price24hPcnt: symbol.startsWith('LOW') ? String((30 - Number(symbol.slice(3, -4))) / 100) : '0',
+      turnover24h: symbol === 'DUSTUSDT' ? '1000' : symbol.startsWith('LOW') ? '1000000' : '4000000',
       fundingRate: '-0.001', singleOpenInterest: '100' })) };
     else if (u.pathname.endsWith('/instruments-info')) {
       const cursor = u.searchParams.get('cursor');
@@ -166,7 +169,9 @@ test('handler keeps market/discovery scope, adds bounded reduction lane and prop
         quoteCoin: symbol === 'BTCUSDC' ? 'USDC' : 'USDT' }));
       result = { list: cursor ? list.slice(50) : list.slice(0, 50), nextPageCursor: cursor ? '' : 'page2' };
     } else if (u.pathname.endsWith('/open-interest')) result = { list: oi(
-      Array.from({ length: 12 }, (_, i) => symbol.startsWith('COVER') ? 100 + i : 120 - i)) };
+      symbol === 'LOW0USDT'
+        ? [120, 110, 100, 99, 98, 97, 96, 95, 94, 93, 92, 91]
+        : Array.from({ length: 12 }, (_, i) => symbol.startsWith('COVER') ? 100 + i : symbol.startsWith('LOW') ? 102 - i : 120 - i)) };
     else if (u.pathname.endsWith('/kline')) result = { list: candles(symbol.startsWith('COVER') ? 0.3 : -0.3) };
     else throw new Error('unexpected path');
     return { ok: true, text: async () => JSON.stringify({ retCode: 0, result }) };
@@ -177,6 +182,11 @@ test('handler keeps market/discovery scope, adds bounded reduction lane and prop
   assert.equal(status, 200);
   assert.equal(payload.version, 'OI-RADAR-V4.1');
   assert.equal(payload.diagnostics.universeCount, 110);
+  assert.equal(payload.diagnostics.lowLiquidityWatchCount, 15);
+  assert.equal(payload.diagnostics.lowLiquidityAlertCount, 1);
+  assert.equal(JSON.stringify(payload.lowLiquidityAlerts.map(row => [row.symbol, row.type])),
+    JSON.stringify([['LOW0USDT', 'LOW_LIQUIDITY_OI_SURGE']]));
+  assert.ok(payload.lowLiquidityAlerts[0].oi15mPct >= 8);
   assert.equal(payload.diagnostics.oiCandidateCount, 85);
   assert.equal(payload.diagnostics.reductionDeepScannedCount, 20);
   assert.equal(payload.diagnostics.klineDeepScannedCount, 100);
@@ -189,6 +199,8 @@ test('handler keeps market/discovery scope, adds bounded reduction lane and prop
   assert.ok(payload.candidates.every(x => x.executionState === 'SHORT_BUILD'));
   assert.ok(payload.shortCovering.every(x => x.scanLane === 'OI_REDUCTION' && x.trigger === 'NONE'));
   assert.ok(!requests.some(([, s]) => ['BTCUSDC', 'FUTUREUSDT', 'HALTEDUSDT', 'DUSTUSDT'].includes(s)));
+  assert.equal(requests.filter(([path, s]) => path.endsWith('/open-interest') && s?.startsWith('LOW')).length, 15);
+  assert.ok(!requests.some(([path, s]) => path.endsWith('/kline') && s?.startsWith('LOW')));
   for (const field of ['candidates', 'oiSpikes', 'cooling', 'oiUnwind', 'extended']) assert.ok(Array.isArray(payload[field]));
   assert.ok(payload.executionStates.every(x => 'legacySignal' in x && 'legacyTrigger' in x && 'legacyScore' in x));
   assert.ok(payload.candidates.every(x => x.crossExchange.status === 'not_configured'));

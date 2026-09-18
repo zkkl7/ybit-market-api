@@ -2919,7 +2919,7 @@ export default async function handler(
       );
 
 
-    const universe =
+    const eligibleTickers =
       tickers
 
         .filter(
@@ -2976,9 +2976,55 @@ export default async function handler(
         .filter(
           (item) =>
             item.price !== null &&
-            item.turnover24h !== null &&
+            item.turnover24h !== null
+        );
+
+
+    const universe =
+      eligibleTickers
+
+        .filter(
+          (item) =>
             item.turnover24h >=
               3000000
+        );
+
+
+    const lowLiquidityWatchUniverse =
+      eligibleTickers
+
+        .filter(
+          (item) =>
+            item.turnover24h >=
+              500000 &&
+            item.turnover24h <
+              3000000 &&
+            Number.isFinite(
+              item.price24hPct
+            ) &&
+            Math.abs(
+              item.price24hPct
+            ) >= 3
+        )
+
+        .sort(
+          (a, b) =>
+            Math.abs(
+              b.price24hPct
+            ) -
+              Math.abs(
+                a.price24hPct
+              ) ||
+            b.turnover24h -
+              a.turnover24h ||
+            a.symbol.localeCompare(
+              b.symbol
+            )
+        )
+
+        .slice(
+          0,
+          15
         );
 
 
@@ -3170,6 +3216,158 @@ export default async function handler(
 
       await sleep(80);
     }
+
+
+    // ========================================================
+    // 4B. LOW-LIQUIDITY OI SURGE WATCH
+    // ========================================================
+
+    const lowLiquidityAlerts = [];
+
+
+    for (
+      let i = 0;
+      i < lowLiquidityWatchUniverse.length;
+      i += 15
+    ) {
+
+      const batch =
+        lowLiquidityWatchUniverse.slice(
+          i,
+          i + 15
+        );
+
+
+      const data =
+        await Promise.all(
+
+          batch.map(
+            async (ticker) => {
+
+              try {
+
+                const result =
+                  await bybit(
+                    "/v5/market/open-interest",
+                    {
+                      category:
+                        "linear",
+
+                      symbol:
+                        ticker.symbol,
+
+                      intervalTime:
+                        "15min",
+
+                      limit:
+                        "12",
+                    }
+                  );
+
+
+                const oi =
+                  parseOI(
+                    result.list ||
+                      []
+                  );
+
+
+                if (!oi) {
+                  throw new Error("Incomplete or non-contiguous 15M OI history");
+                }
+
+
+                if (
+                  oi.oi15mPct < 8 &&
+                  oi.oi30mPct < 12
+                ) {
+                  return null;
+                }
+
+
+                return {
+                  type:
+                    "LOW_LIQUIDITY_OI_SURGE",
+
+                  symbol:
+                    ticker.symbol,
+
+                  price:
+                    ticker.price,
+
+                  price24hPct:
+                    ticker.price24hPct,
+
+                  turnover24h:
+                    ticker.turnover24h,
+
+                  fundingRate:
+                    ticker.fundingRate,
+
+                  oiSampleAt:
+                    oi.oiSampleAt,
+
+                  singleOpenInterest:
+                    oi.current,
+
+                  oi15mPct:
+                    oi.oi15mPct,
+
+                  oi30mPct:
+                    oi.oi30mPct,
+                };
+
+
+              } catch (error) {
+
+                oiErrors++;
+
+
+                if (
+                  errorSamples.length <
+                  10
+                ) {
+
+                  errorSamples.push({
+                    stage:
+                      "LOW_LIQUIDITY_OI",
+
+                    symbol:
+                      ticker.symbol,
+
+                    error:
+                      error.message,
+                  });
+                }
+
+
+                return null;
+              }
+            }
+          )
+        );
+
+
+      lowLiquidityAlerts.push(
+        ...data.filter(Boolean)
+      );
+
+
+      await sleep(80);
+    }
+
+
+    lowLiquidityAlerts.sort(
+      (a, b) =>
+        Math.max(
+          b.oi15mPct,
+          b.oi30mPct
+        ) -
+        Math.max(
+          a.oi15mPct,
+          a.oi30mPct
+        )
+    );
 
 
     // ========================================================
@@ -3747,6 +3945,14 @@ diagnostics: {
             universe.length,
 
 
+          lowLiquidityWatchCount:
+            lowLiquidityWatchUniverse.length,
+
+
+          lowLiquidityAlertCount:
+            lowLiquidityAlerts.length,
+
+
           oiScannedCount:
             oiRows.length,
 
@@ -3810,6 +4016,8 @@ diagnostics: {
         executionStates: finalRows,
         shortCovering: finalRows.filter(row => row.executionState === "SHORT_COVERING"),
         deleveraging: finalRows.filter(row => row.executionState === "DELEVERAGING"),
+
+        lowLiquidityAlerts,
 
         candidates:
           candidateRows.slice(
