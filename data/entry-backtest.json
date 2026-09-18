@@ -1,6 +1,6 @@
 {
   "version": "ENTRY-BACKTEST-V1",
-  "updatedAt": "2026-09-18T06:19:24.903Z",
+  "updatedAt": "2026-09-18T06:45:37.335Z",
   "rules": {
     "leverageReference": "10x",
     "pnlUnit": "underlying_pct",
@@ -17,8 +17,8 @@
     "entryCandlePolicyDetail": "For a partial entry candle, use the full candle only for MAE and stop detection; ignore its favorable move, MFE, and profit hit because pre-entry intrabar order is unknown."
   },
   "summary": {
-    "total": 9,
-    "open": 7,
+    "total": 11,
+    "open": 9,
     "success": 2,
     "fail": 0,
     "deepDrawdownSuccess": 0,
@@ -211,6 +211,46 @@
       "entryCandleChecked": false,
       "checkedThrough": "2026-09-18T06:19:18.994Z",
       "updatedAt": "2026-09-18T06:19:18.994Z"
+    },
+    {
+      "symbol": "AMZNUSDT",
+      "direction": "LONG",
+      "entrySignal": "RETEST_ENTRY",
+      "entryPrice": 252.75,
+      "entryTime": "2026-09-18T06:45:31.962Z",
+      "maePct": 0,
+      "mfePct": 0,
+      "maePrice": 252.75,
+      "mfePrice": 252.75,
+      "maeBeforeSuccessPct": 0,
+      "firstProfitHitAt": null,
+      "stopHitAt": null,
+      "status": "OPEN",
+      "deepDrawdownSuccess": false,
+      "mfeBucket": null,
+      "entryCandleChecked": false,
+      "checkedThrough": "2026-09-18T06:45:31.962Z",
+      "updatedAt": "2026-09-18T06:45:31.962Z"
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "direction": "LONG",
+      "entrySignal": "RETEST_ENTRY",
+      "entryPrice": 0.3853,
+      "entryTime": "2026-09-18T06:45:31.962Z",
+      "maePct": 0,
+      "mfePct": 0,
+      "maePrice": 0.3853,
+      "mfePrice": 0.3853,
+      "maeBeforeSuccessPct": 0,
+      "firstProfitHitAt": null,
+      "stopHitAt": null,
+      "status": "OPEN",
+      "deepDrawdownSuccess": false,
+      "mfeBucket": null,
+      "entryCandleChecked": false,
+      "checkedThrough": "2026-09-18T06:45:31.962Z",
+      "updatedAt": "2026-09-18T06:45:31.962Z"
     }
   ]
 }
