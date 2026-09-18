@@ -6,6 +6,9 @@ const VERSION = "OI-RADAR-V4.4";
 
 const TRADFI_SYMBOLS = new Set([
   // 已有
+  "SOXSUSDT",
+  "METAUSDT",
+  "MSFTUSDT",
   "MRVLUSDT",
   "SOFIUSDT",
   "QQQUSDT",
