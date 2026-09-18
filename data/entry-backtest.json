@@ -1,6 +1,6 @@
 {
   "version": "ENTRY-BACKTEST-V1",
-  "updatedAt": "2026-09-18T12:31:29.387Z",
+  "updatedAt": "2026-09-18T12:45:22.658Z",
   "rules": {
     "leverageReference": "10x",
     "pnlUnit": "underlying_pct",
@@ -17,16 +17,16 @@
     "entryCandlePolicyDetail": "For a partial entry candle, use the full candle only for MAE and stop detection; ignore its favorable move, MFE, and profit hit because pre-entry intrabar order is unknown."
   },
   "summary": {
-    "total": 83,
-    "open": 27,
-    "success": 52,
+    "total": 88,
+    "open": 29,
+    "success": 55,
     "fail": 4,
     "deepDrawdownSuccess": 2,
     "mfeBuckets": {
-      "+0.5~1%": 13,
-      "+1~2%": 17,
-      "+2~5%": 13,
-      ">+5%": 10
+      "+0.5~1%": 15,
+      "+1~2%": 16,
+      "+2~5%": 14,
+      ">+5%": 11
     }
   },
   "entries": [
@@ -46,8 +46,8 @@
       "status": "SUCCESS",
       "deepDrawdownSuccess": false,
       "mfeBucket": ">+5%",
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "entryCandleChecked": true,
       "terminalAt": "2026-09-18T06:05:00.000Z"
     },
@@ -67,8 +67,8 @@
       "status": "SUCCESS",
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "entryCandleChecked": true,
       "terminalAt": "2026-09-18T07:10:00.000Z"
     },
@@ -88,8 +88,8 @@
       "status": "SUCCESS",
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "entryCandleChecked": true,
       "terminalAt": "2026-09-18T06:25:00.000Z"
     },
@@ -109,8 +109,8 @@
       "status": "SUCCESS",
       "deepDrawdownSuccess": false,
       "mfeBucket": ">+5%",
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "entryCandleChecked": true,
       "terminalAt": "2026-09-18T05:50:00.000Z"
     },
@@ -120,18 +120,18 @@
       "entrySignal": "BREAKOUT_ENTRY",
       "entryPrice": 1337.44,
       "entryTime": "2026-09-18T05:43:48.299Z",
-      "maePct": -1.1133,
+      "maePct": -1.1926,
       "mfePct": 0.3484,
-      "maePrice": 1322.55,
+      "maePrice": 1321.49,
       "mfePrice": 1342.1,
-      "maeBeforeSuccessPct": -1.1133,
+      "maeBeforeSuccessPct": -1.1926,
       "firstProfitHitAt": null,
       "stopHitAt": null,
       "status": "OPEN",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "entryCandleChecked": true
     },
     {
@@ -150,8 +150,8 @@
       "status": "FAIL",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "entryCandleChecked": true,
       "terminalAt": "2026-09-18T12:25:00.000Z"
     },
@@ -172,8 +172,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T06:25:00.000Z"
     },
     {
@@ -193,8 +193,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "SEIUSDT",
@@ -213,8 +213,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T06:45:00.000Z"
     },
     {
@@ -234,8 +234,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "ONDOUSDT",
@@ -244,9 +244,9 @@
       "entryPrice": 0.3853,
       "entryTime": "2026-09-18T06:45:31.962Z",
       "maePct": -0.7267,
-      "mfePct": 2.1542,
+      "mfePct": 3.6854,
       "maePrice": 0.3825,
-      "mfePrice": 0.3936,
+      "mfePrice": 0.3995,
       "maeBeforeSuccessPct": -0.7267,
       "firstProfitHitAt": "2026-09-18T08:55:00.000Z",
       "stopHitAt": null,
@@ -254,8 +254,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T08:55:00.000Z"
     },
     {
@@ -265,18 +265,18 @@
       "entryPrice": 0.01362,
       "entryTime": "2026-09-18T07:13:46.806Z",
       "maePct": -0.2203,
-      "mfePct": 4.2584,
+      "mfePct": 5.2129,
       "maePrice": 0.01359,
-      "mfePrice": 0.0142,
+      "mfePrice": 0.01433,
       "maeBeforeSuccessPct": -0.2203,
       "firstProfitHitAt": "2026-09-18T07:50:00.000Z",
       "stopHitAt": null,
       "status": "SUCCESS",
       "deepDrawdownSuccess": false,
-      "mfeBucket": "+2~5%",
+      "mfeBucket": ">+5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T07:50:00.000Z"
     },
     {
@@ -296,8 +296,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": ">+5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T07:25:00.000Z"
     },
     {
@@ -317,8 +317,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T07:50:00.000Z"
     },
     {
@@ -338,8 +338,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:00:00.000Z"
     },
     {
@@ -359,8 +359,8 @@
       "deepDrawdownSuccess": true,
       "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T12:00:00.000Z"
     },
     {
@@ -380,8 +380,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": ">+5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T07:40:00.000Z"
     },
     {
@@ -401,8 +401,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T08:10:00.000Z"
     },
     {
@@ -422,8 +422,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "AVGOUSDT",
@@ -442,8 +442,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "CRWVUSDT",
@@ -462,8 +462,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "PONSUSDT",
@@ -482,8 +482,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T08:25:00.000Z"
     },
     {
@@ -503,8 +503,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:00:00.000Z"
     },
     {
@@ -524,8 +524,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": ">+5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T08:05:00.000Z"
     },
     {
@@ -534,19 +534,19 @@
       "entrySignal": "BREAKOUT_ENTRY",
       "entryPrice": 0.3852,
       "entryTime": "2026-09-18T07:53:12.013Z",
-      "maePct": -2.1807,
+      "maePct": -3.7124,
       "mfePct": 0.7009,
-      "maePrice": 0.3936,
+      "maePrice": 0.3995,
       "mfePrice": 0.3825,
       "maeBeforeSuccessPct": -0.0779,
       "firstProfitHitAt": "2026-09-18T08:10:00.000Z",
-      "stopHitAt": null,
+      "stopHitAt": "2026-09-18T12:40:00.000Z",
       "status": "SUCCESS",
       "deepDrawdownSuccess": false,
       "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T08:10:00.000Z"
     },
     {
@@ -555,9 +555,9 @@
       "entrySignal": "RETEST_ENTRY",
       "entryPrice": 0.01275,
       "entryTime": "2026-09-18T08:14:40.792Z",
-      "maePct": -1.2549,
+      "maePct": -1.8824,
       "mfePct": 1.1765,
-      "maePrice": 0.01259,
+      "maePrice": 0.01251,
       "mfePrice": 0.0129,
       "maeBeforeSuccessPct": -0.3922,
       "firstProfitHitAt": "2026-09-18T09:35:00.000Z",
@@ -566,8 +566,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:35:00.000Z"
     },
     {
@@ -587,8 +587,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:40:00.000Z"
     },
     {
@@ -608,8 +608,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "PONSUSDT",
@@ -628,8 +628,8 @@
       "deepDrawdownSuccess": true,
       "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:05:00.000Z"
     },
     {
@@ -649,8 +649,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": ">+5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T08:40:00.000Z"
     },
     {
@@ -670,8 +670,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T08:40:00.000Z"
     },
     {
@@ -691,8 +691,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:55:00.000Z"
     },
     {
@@ -712,8 +712,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T10:55:00.000Z"
     },
     {
@@ -722,9 +722,9 @@
       "entrySignal": "BREAKOUT_ENTRY",
       "entryPrice": 0.03502,
       "entryTime": "2026-09-18T08:53:59.262Z",
-      "maePct": -5.6825,
+      "maePct": -5.8538,
       "mfePct": 3.9977,
-      "maePrice": 0.03303,
+      "maePrice": 0.03297,
       "mfePrice": 0.03642,
       "maeBeforeSuccessPct": -0.5425,
       "firstProfitHitAt": "2026-09-18T09:00:00.000Z",
@@ -733,8 +733,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:00:00.000Z"
     },
     {
@@ -754,8 +754,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T11:10:00.000Z"
     },
     {
@@ -775,8 +775,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:05:00.000Z"
     },
     {
@@ -796,8 +796,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T10:00:00.000Z"
     },
     {
@@ -817,8 +817,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": ">+5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:20:00.000Z"
     },
     {
@@ -838,8 +838,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T10:00:00.000Z"
     },
     {
@@ -859,8 +859,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:20:00.000Z"
     },
     {
@@ -880,8 +880,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:20:00.000Z"
     },
     {
@@ -901,8 +901,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:45:00.000Z"
     },
     {
@@ -922,8 +922,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": ">+5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T10:10:00.000Z"
     },
     {
@@ -943,8 +943,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": ">+5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:40:00.000Z"
     },
     {
@@ -953,9 +953,9 @@
       "entrySignal": "BREAKOUT_ENTRY",
       "entryPrice": 0.02429,
       "entryTime": "2026-09-18T09:30:57.204Z",
-      "maePct": -0.3705,
+      "maePct": -0.6175,
       "mfePct": 2.7583,
-      "maePrice": 0.02438,
+      "maePrice": 0.02444,
       "mfePrice": 0.02362,
       "maeBeforeSuccessPct": -0.1235,
       "firstProfitHitAt": "2026-09-18T09:40:00.000Z",
@@ -964,8 +964,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T09:40:00.000Z"
     },
     {
@@ -985,8 +985,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T10:25:00.000Z"
     },
     {
@@ -1006,8 +1006,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T10:05:00.000Z"
     },
     {
@@ -1017,9 +1017,9 @@
       "entryPrice": 3.529,
       "entryTime": "2026-09-18T10:13:52.033Z",
       "maePct": -2.5503,
-      "mfePct": 1.8986,
+      "mfePct": 1.9552,
       "maePrice": 3.439,
-      "mfePrice": 3.596,
+      "mfePrice": 3.598,
       "maeBeforeSuccessPct": -0.6801,
       "firstProfitHitAt": "2026-09-18T10:25:00.000Z",
       "stopHitAt": null,
@@ -1027,8 +1027,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T10:25:00.000Z"
     },
     {
@@ -1048,8 +1048,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T10:30:00.000Z"
     },
     {
@@ -1069,8 +1069,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T10:25:00.000Z"
     },
     {
@@ -1090,8 +1090,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T10:40:00.000Z"
     },
     {
@@ -1101,9 +1101,9 @@
       "entryPrice": 8.007,
       "entryTime": "2026-09-18T10:30:53.762Z",
       "maePct": -1.2489,
-      "mfePct": 0.2248,
+      "mfePct": 0.3122,
       "maePrice": 7.907,
-      "mfePrice": 8.025,
+      "mfePrice": 8.032,
       "maeBeforeSuccessPct": -1.2489,
       "firstProfitHitAt": null,
       "stopHitAt": null,
@@ -1111,8 +1111,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "TUTUSDT",
@@ -1120,19 +1120,19 @@
       "entrySignal": "RETEST_ENTRY",
       "entryPrice": 0.021637,
       "entryTime": "2026-09-18T10:30:53.762Z",
-      "maePct": -2.2924,
+      "maePct": -2.6205,
       "mfePct": 0.1756,
-      "maePrice": 0.021141,
+      "maePrice": 0.02107,
       "mfePrice": 0.021675,
-      "maeBeforeSuccessPct": -2.2924,
+      "maeBeforeSuccessPct": -2.6205,
       "firstProfitHitAt": null,
       "stopHitAt": null,
       "status": "OPEN",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "NIULAIUSDT",
@@ -1151,8 +1151,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": ">+5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T10:40:00.000Z"
     },
     {
@@ -1172,8 +1172,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "TUSDT",
@@ -1192,8 +1192,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T11:50:00.000Z"
     },
     {
@@ -1202,9 +1202,9 @@
       "entrySignal": "RETEST_ENTRY",
       "entryPrice": 0.4501,
       "entryTime": "2026-09-18T10:53:01.007Z",
-      "maePct": -0.311,
+      "maePct": -0.3555,
       "mfePct": 1.022,
-      "maePrice": 0.4515,
+      "maePrice": 0.4517,
       "mfePrice": 0.4455,
       "maeBeforeSuccessPct": -0.311,
       "firstProfitHitAt": "2026-09-18T11:10:00.000Z",
@@ -1213,8 +1213,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T11:10:00.000Z"
     },
     {
@@ -1223,19 +1223,19 @@
       "entrySignal": "RETEST_ENTRY",
       "entryPrice": 30.96,
       "entryTime": "2026-09-18T10:53:01.007Z",
-      "maePct": -2.7778,
+      "maePct": -2.9716,
       "mfePct": 0.4845,
-      "maePrice": 30.1,
+      "maePrice": 30.04,
       "mfePrice": 31.11,
-      "maeBeforeSuccessPct": -2.7778,
+      "maeBeforeSuccessPct": -2.9716,
       "firstProfitHitAt": null,
       "stopHitAt": null,
       "status": "OPEN",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "SNXXUSDT",
@@ -1243,19 +1243,19 @@
       "entrySignal": "RETEST_ENTRY",
       "entryPrice": 15.27,
       "entryTime": "2026-09-18T11:12:42.757Z",
-      "maePct": -1.7682,
+      "maePct": -2.7505,
       "mfePct": 0,
-      "maePrice": 15,
+      "maePrice": 14.85,
       "mfePrice": 15.27,
-      "maeBeforeSuccessPct": -1.7682,
+      "maeBeforeSuccessPct": -2.7505,
       "firstProfitHitAt": null,
       "stopHitAt": null,
       "status": "OPEN",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "SENTUSDT",
@@ -1274,8 +1274,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T11:20:00.000Z"
     },
     {
@@ -1284,19 +1284,19 @@
       "entrySignal": "BREAKOUT_ENTRY",
       "entryPrice": 0.08726,
       "entryTime": "2026-09-18T11:12:42.757Z",
-      "maePct": -3.14,
+      "maePct": -3.438,
       "mfePct": 0.2063,
-      "maePrice": 0.09,
+      "maePrice": 0.09026,
       "mfePrice": 0.08708,
-      "maeBeforeSuccessPct": -3.14,
+      "maeBeforeSuccessPct": -3.438,
       "firstProfitHitAt": null,
       "stopHitAt": null,
       "status": "OPEN",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "TUTUSDT",
@@ -1305,18 +1305,19 @@
       "entryPrice": 0.02124,
       "entryTime": "2026-09-18T11:12:42.757Z",
       "maePct": -1.0499,
-      "mfePct": 0.3719,
+      "mfePct": 0.8004,
       "maePrice": 0.021463,
-      "mfePrice": 0.021161,
+      "mfePrice": 0.02107,
       "maeBeforeSuccessPct": -1.0499,
-      "firstProfitHitAt": null,
+      "firstProfitHitAt": "2026-09-18T12:45:00.000Z",
       "stopHitAt": null,
-      "status": "OPEN",
+      "status": "SUCCESS",
       "deepDrawdownSuccess": false,
-      "mfeBucket": null,
+      "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
+      "terminalAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "SEIUSDT",
@@ -1324,19 +1325,19 @@
       "entrySignal": "BREAKOUT_ENTRY",
       "entryPrice": 0.04652,
       "entryTime": "2026-09-18T11:12:42.757Z",
-      "maePct": -1.2898,
+      "maePct": -1.7842,
       "mfePct": 0.129,
-      "maePrice": 0.04712,
+      "maePrice": 0.04735,
       "mfePrice": 0.04646,
-      "maeBeforeSuccessPct": -1.2898,
+      "maeBeforeSuccessPct": -1.7842,
       "firstProfitHitAt": null,
       "stopHitAt": null,
       "status": "OPEN",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "NIGHTUSDT",
@@ -1355,8 +1356,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T11:40:00.000Z"
     },
     {
@@ -1365,19 +1366,19 @@
       "entrySignal": "BREAKOUT_ENTRY",
       "entryPrice": 0.22176,
       "entryTime": "2026-09-18T11:28:34.490Z",
-      "maePct": -0.8523,
+      "maePct": -0.8793,
       "mfePct": 0.1804,
-      "maePrice": 0.22365,
+      "maePrice": 0.22371,
       "mfePrice": 0.22136,
-      "maeBeforeSuccessPct": -0.8523,
+      "maeBeforeSuccessPct": -0.8793,
       "firstProfitHitAt": null,
       "stopHitAt": null,
       "status": "OPEN",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "OPNUSDT",
@@ -1385,19 +1386,19 @@
       "entrySignal": "BREAKOUT_ENTRY",
       "entryPrice": 0.04524,
       "entryTime": "2026-09-18T11:28:34.490Z",
-      "maePct": -0.5968,
+      "maePct": -1.3042,
       "mfePct": 0.0221,
-      "maePrice": 0.04551,
+      "maePrice": 0.04583,
       "mfePrice": 0.04523,
-      "maeBeforeSuccessPct": -0.5968,
+      "maeBeforeSuccessPct": -1.3042,
       "firstProfitHitAt": null,
       "stopHitAt": null,
       "status": "OPEN",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "UAIUSDT",
@@ -1416,8 +1417,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "GMTUSDT",
@@ -1436,8 +1437,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "CYSUSDT",
@@ -1456,8 +1457,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T12:15:00.000Z"
     },
     {
@@ -1467,9 +1468,9 @@
       "entryPrice": 0.07533,
       "entryTime": "2026-09-18T11:43:47.738Z",
       "maePct": -0.531,
-      "mfePct": 0.0531,
+      "mfePct": 0.3451,
       "maePrice": 0.07493,
-      "mfePrice": 0.07537,
+      "mfePrice": 0.07559,
       "maeBeforeSuccessPct": -0.531,
       "firstProfitHitAt": null,
       "stopHitAt": null,
@@ -1477,8 +1478,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "GRIFFAINUSDT",
@@ -1497,8 +1498,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T11:50:00.000Z"
     },
     {
@@ -1508,9 +1509,9 @@
       "entryPrice": 96.25,
       "entryTime": "2026-09-18T11:55:23.375Z",
       "maePct": -0.6338,
-      "mfePct": 0.561,
+      "mfePct": 0.5922,
       "maePrice": 95.64,
-      "mfePrice": 96.79,
+      "mfePrice": 96.82,
       "maeBeforeSuccessPct": -0.6338,
       "firstProfitHitAt": "2026-09-18T12:25:00.000Z",
       "stopHitAt": null,
@@ -1518,8 +1519,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T12:25:00.000Z"
     },
     {
@@ -1528,19 +1529,19 @@
       "entrySignal": "BREAKOUT_ENTRY",
       "entryPrice": 27.91,
       "entryTime": "2026-09-18T11:55:23.375Z",
-      "maePct": -0.6091,
+      "maePct": -0.8957,
       "mfePct": 0,
-      "maePrice": 27.74,
+      "maePrice": 27.66,
       "mfePrice": 27.91,
-      "maeBeforeSuccessPct": -0.6091,
+      "maeBeforeSuccessPct": -0.8957,
       "firstProfitHitAt": null,
       "stopHitAt": null,
       "status": "OPEN",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "SKYUSDT",
@@ -1549,18 +1550,18 @@
       "entryPrice": 0.06646,
       "entryTime": "2026-09-18T11:55:23.375Z",
       "maePct": -0.2257,
-      "mfePct": 1.941,
+      "mfePct": 2.1216,
       "maePrice": 0.06661,
-      "mfePrice": 0.06517,
+      "mfePrice": 0.06505,
       "maeBeforeSuccessPct": -0.2257,
       "firstProfitHitAt": "2026-09-18T12:05:00.000Z",
       "stopHitAt": null,
       "status": "SUCCESS",
       "deepDrawdownSuccess": false,
-      "mfeBucket": "+1~2%",
+      "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T12:05:00.000Z"
     },
     {
@@ -1570,18 +1571,18 @@
       "entryPrice": 0.01278,
       "entryTime": "2026-09-18T11:55:23.375Z",
       "maePct": -0.313,
-      "mfePct": 1.4867,
+      "mfePct": 2.1127,
       "maePrice": 0.01282,
-      "mfePrice": 0.01259,
+      "mfePrice": 0.01251,
       "maeBeforeSuccessPct": -0.313,
       "firstProfitHitAt": "2026-09-18T12:20:00.000Z",
       "stopHitAt": null,
       "status": "SUCCESS",
       "deepDrawdownSuccess": false,
-      "mfeBucket": "+1~2%",
+      "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T12:20:00.000Z"
     },
     {
@@ -1591,9 +1592,9 @@
       "entryPrice": 0.03166,
       "entryTime": "2026-09-18T12:17:26.360Z",
       "maePct": -1.0739,
-      "mfePct": 3.0322,
+      "mfePct": 3.6639,
       "maePrice": 0.03132,
-      "mfePrice": 0.03262,
+      "mfePrice": 0.03282,
       "maeBeforeSuccessPct": -1.0739,
       "firstProfitHitAt": "2026-09-18T12:25:00.000Z",
       "stopHitAt": null,
@@ -1601,8 +1602,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+2~5%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T12:25:00.000Z"
     },
     {
@@ -1612,18 +1613,19 @@
       "entryPrice": 0.03252,
       "entryTime": "2026-09-18T12:17:26.360Z",
       "maePct": -0.5535,
-      "mfePct": 0.3075,
+      "mfePct": 1.8143,
       "maePrice": 0.03234,
-      "mfePrice": 0.03262,
+      "mfePrice": 0.03311,
       "maeBeforeSuccessPct": -0.5535,
-      "firstProfitHitAt": null,
+      "firstProfitHitAt": "2026-09-18T12:40:00.000Z",
       "stopHitAt": null,
-      "status": "OPEN",
+      "status": "SUCCESS",
       "deepDrawdownSuccess": false,
-      "mfeBucket": null,
+      "mfeBucket": "+1~2%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
+      "terminalAt": "2026-09-18T12:40:00.000Z"
     },
     {
       "symbol": "PROVEUSDT",
@@ -1631,19 +1633,19 @@
       "entrySignal": "RETEST_ENTRY",
       "entryPrice": 0.2005,
       "entryTime": "2026-09-18T12:17:26.360Z",
-      "maePct": -0.399,
-      "mfePct": 0,
-      "maePrice": 0.1997,
-      "mfePrice": 0.2005,
-      "maeBeforeSuccessPct": -0.399,
+      "maePct": -0.7481,
+      "mfePct": 0.0499,
+      "maePrice": 0.199,
+      "mfePrice": 0.2006,
+      "maeBeforeSuccessPct": -0.7481,
       "firstProfitHitAt": null,
       "stopHitAt": null,
       "status": "OPEN",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "EWYUSDT",
@@ -1651,19 +1653,19 @@
       "entrySignal": "BREAKOUT_ENTRY",
       "entryPrice": 180.02,
       "entryTime": "2026-09-18T12:17:26.360Z",
-      "maePct": -0.0889,
+      "maePct": -0.1944,
       "mfePct": 0.2111,
-      "maePrice": 180.18,
+      "maePrice": 180.37,
       "mfePrice": 179.64,
-      "maeBeforeSuccessPct": -0.0889,
+      "maeBeforeSuccessPct": -0.1944,
       "firstProfitHitAt": null,
       "stopHitAt": null,
       "status": "OPEN",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z"
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "KORUUSDT",
@@ -1671,9 +1673,9 @@
       "entrySignal": "BREAKOUT_ENTRY",
       "entryPrice": 19.54,
       "entryTime": "2026-09-18T12:17:26.360Z",
-      "maePct": -0.2559,
+      "maePct": -0.5118,
       "mfePct": 0.5118,
-      "maePrice": 19.59,
+      "maePrice": 19.64,
       "mfePrice": 19.44,
       "maeBeforeSuccessPct": -0.2559,
       "firstProfitHitAt": "2026-09-18T12:25:00.000Z",
@@ -1682,8 +1684,8 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": "+0.5~1%",
       "entryCandleChecked": true,
-      "checkedThrough": "2026-09-18T12:30:00.000Z",
-      "updatedAt": "2026-09-18T12:30:00.000Z",
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
       "terminalAt": "2026-09-18T12:25:00.000Z"
     },
     {
@@ -1692,19 +1694,19 @@
       "entrySignal": "BREAKOUT_ENTRY",
       "entryPrice": 0.12997,
       "entryTime": "2026-09-18T12:31:23.921Z",
-      "maePct": 0,
-      "mfePct": 0,
-      "maePrice": 0.12997,
-      "mfePrice": 0.12997,
-      "maeBeforeSuccessPct": 0,
+      "maePct": -0.5617,
+      "mfePct": 0.0846,
+      "maePrice": 0.12924,
+      "mfePrice": 0.13008,
+      "maeBeforeSuccessPct": -0.5617,
       "firstProfitHitAt": null,
       "stopHitAt": null,
       "status": "OPEN",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
-      "entryCandleChecked": false,
-      "checkedThrough": "2026-09-18T12:31:23.921Z",
-      "updatedAt": "2026-09-18T12:31:23.921Z"
+      "entryCandleChecked": true,
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "KATUSDT",
@@ -1712,19 +1714,19 @@
       "entrySignal": "RETEST_ENTRY",
       "entryPrice": 0.004561,
       "entryTime": "2026-09-18T12:31:23.921Z",
-      "maePct": 0,
-      "mfePct": 0,
-      "maePrice": 0.004561,
-      "mfePrice": 0.004561,
-      "maeBeforeSuccessPct": 0,
+      "maePct": -0.1096,
+      "mfePct": 0.2412,
+      "maePrice": 0.004556,
+      "mfePrice": 0.004572,
+      "maeBeforeSuccessPct": -0.1096,
       "firstProfitHitAt": null,
       "stopHitAt": null,
       "status": "OPEN",
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
-      "entryCandleChecked": false,
-      "checkedThrough": "2026-09-18T12:31:23.921Z",
-      "updatedAt": "2026-09-18T12:31:23.921Z"
+      "entryCandleChecked": true,
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z"
     },
     {
       "symbol": "1000BONKUSDT",
@@ -1732,10 +1734,31 @@
       "entrySignal": "BREAKOUT_ENTRY",
       "entryPrice": 0.00281,
       "entryTime": "2026-09-18T12:31:23.921Z",
+      "maePct": -0.0712,
+      "mfePct": 0.9609,
+      "maePrice": 0.002808,
+      "mfePrice": 0.002837,
+      "maeBeforeSuccessPct": -0.0712,
+      "firstProfitHitAt": "2026-09-18T12:40:00.000Z",
+      "stopHitAt": null,
+      "status": "SUCCESS",
+      "deepDrawdownSuccess": false,
+      "mfeBucket": "+0.5~1%",
+      "entryCandleChecked": true,
+      "checkedThrough": "2026-09-18T12:45:00.000Z",
+      "updatedAt": "2026-09-18T12:45:00.000Z",
+      "terminalAt": "2026-09-18T12:40:00.000Z"
+    },
+    {
+      "symbol": "TMXUSDT",
+      "direction": "LONG",
+      "entrySignal": "BREAKOUT_ENTRY",
+      "entryPrice": 0.0217,
+      "entryTime": "2026-09-18T12:45:17.440Z",
       "maePct": 0,
       "mfePct": 0,
-      "maePrice": 0.00281,
-      "mfePrice": 0.00281,
+      "maePrice": 0.0217,
+      "mfePrice": 0.0217,
       "maeBeforeSuccessPct": 0,
       "firstProfitHitAt": null,
       "stopHitAt": null,
@@ -1743,8 +1766,88 @@
       "deepDrawdownSuccess": false,
       "mfeBucket": null,
       "entryCandleChecked": false,
-      "checkedThrough": "2026-09-18T12:31:23.921Z",
-      "updatedAt": "2026-09-18T12:31:23.921Z"
+      "checkedThrough": "2026-09-18T12:45:17.440Z",
+      "updatedAt": "2026-09-18T12:45:17.440Z"
+    },
+    {
+      "symbol": "BOTUSDT",
+      "direction": "SHORT",
+      "entrySignal": "RETEST_ENTRY",
+      "entryPrice": 27.71,
+      "entryTime": "2026-09-18T12:45:17.440Z",
+      "maePct": 0,
+      "mfePct": 0,
+      "maePrice": 27.71,
+      "mfePrice": 27.71,
+      "maeBeforeSuccessPct": 0,
+      "firstProfitHitAt": null,
+      "stopHitAt": null,
+      "status": "OPEN",
+      "deepDrawdownSuccess": false,
+      "mfeBucket": null,
+      "entryCandleChecked": false,
+      "checkedThrough": "2026-09-18T12:45:17.440Z",
+      "updatedAt": "2026-09-18T12:45:17.440Z"
+    },
+    {
+      "symbol": "POWRUSDT",
+      "direction": "SHORT",
+      "entrySignal": "BREAKOUT_ENTRY",
+      "entryPrice": 0.063,
+      "entryTime": "2026-09-18T12:45:17.440Z",
+      "maePct": 0,
+      "mfePct": 0,
+      "maePrice": 0.063,
+      "mfePrice": 0.063,
+      "maeBeforeSuccessPct": 0,
+      "firstProfitHitAt": null,
+      "stopHitAt": null,
+      "status": "OPEN",
+      "deepDrawdownSuccess": false,
+      "mfeBucket": null,
+      "entryCandleChecked": false,
+      "checkedThrough": "2026-09-18T12:45:17.440Z",
+      "updatedAt": "2026-09-18T12:45:17.440Z"
+    },
+    {
+      "symbol": "CVCUSDT",
+      "direction": "SHORT",
+      "entrySignal": "BREAKOUT_ENTRY",
+      "entryPrice": 0.02649,
+      "entryTime": "2026-09-18T12:45:17.440Z",
+      "maePct": 0,
+      "mfePct": 0,
+      "maePrice": 0.02649,
+      "mfePrice": 0.02649,
+      "maeBeforeSuccessPct": 0,
+      "firstProfitHitAt": null,
+      "stopHitAt": null,
+      "status": "OPEN",
+      "deepDrawdownSuccess": false,
+      "mfeBucket": null,
+      "entryCandleChecked": false,
+      "checkedThrough": "2026-09-18T12:45:17.440Z",
+      "updatedAt": "2026-09-18T12:45:17.440Z"
+    },
+    {
+      "symbol": "COINUSDT",
+      "direction": "LONG",
+      "entrySignal": "RETEST_ENTRY",
+      "entryPrice": 177.24,
+      "entryTime": "2026-09-18T12:45:17.440Z",
+      "maePct": 0,
+      "mfePct": 0,
+      "maePrice": 177.24,
+      "mfePrice": 177.24,
+      "maeBeforeSuccessPct": 0,
+      "firstProfitHitAt": null,
+      "stopHitAt": null,
+      "status": "OPEN",
+      "deepDrawdownSuccess": false,
+      "mfeBucket": null,
+      "entryCandleChecked": false,
+      "checkedThrough": "2026-09-18T12:45:17.440Z",
+      "updatedAt": "2026-09-18T12:45:17.440Z"
     }
   ]
 }
