@@ -147,7 +147,7 @@ function moveForPrice(entry, price) {
   if (entry.direction === "LONG") {
     return (price / entry.entryPrice - 1) * 100;
   }
-  return (entry.entryPrice / price - 1) * 100;
+  return ((entry.entryPrice - price) / entry.entryPrice) * 100;
 }
 
 export function applyCandles(entry, candles) {
