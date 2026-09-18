@@ -2978,7 +2978,7 @@ export default async function handler(
             item.price !== null &&
             item.turnover24h !== null &&
             item.turnover24h >=
-              500000
+              3000000
         );
 
 
