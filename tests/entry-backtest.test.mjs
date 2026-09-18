@@ -95,9 +95,9 @@ test("LONG MAE and MFE use low and high", () => {
 test("SHORT MAE and MFE are direction-aware", () => {
   const row = entry("SHORT");
   applyCandles(row, [candle(0, 102, 95)]);
-  assert.ok(Math.abs(row.mfePct - 5.2632) < 0.001);
+  assert.equal(row.mfePct, 5);
   assert.equal(row.mfePrice, 95);
-  assert.ok(Math.abs(row.maePct - -1.9608) < 0.001);
+  assert.equal(row.maePct, -2);
   assert.equal(row.maePrice, 102);
 });
 
