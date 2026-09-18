@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 const INTERVAL_MS = 5 * 60 * 1000;
 const API_LIMIT = 1000;
+const DEFAULT_KLINE_BASE_URL =
+  "https://ybit-market-api.vercel.app/api/market";
 const EXECUTABLE_SIGNALS = new Set([
   "EARLY_ENTRY",
   "BREAKOUT_ENTRY",
@@ -83,6 +85,14 @@ export function summarize(entries) {
     if (entry.mfeBucket) summary.mfeBuckets[entry.mfeBucket]++;
   }
   return summary;
+}
+
+export function assertKlineProgress(kline) {
+  if (kline.attempted > 0 && kline.succeeded === 0) {
+    throw new Error(
+      `All kline updates failed (attempted=${kline.attempted}, failed=${kline.failed})`
+    );
+  }
 }
 
 function validTime(value) {
@@ -231,7 +241,13 @@ function nextOpenTime(entry) {
   return Math.ceil(checked / INTERVAL_MS) * INTERVAL_MS;
 }
 
-export async function fetchClosedKlines(symbol, startMs, nowMs, fetchImpl = fetch) {
+export async function fetchClosedKlines(
+  symbol,
+  startMs,
+  nowMs,
+  fetchImpl = fetch,
+  baseUrl = process.env.ENTRY_KLINE_BASE_URL ?? DEFAULT_KLINE_BASE_URL
+) {
   const lastClosedOpen = Math.floor(nowMs / INTERVAL_MS) * INTERVAL_MS - INTERVAL_MS;
   if (startMs > lastClosedOpen) return [];
 
@@ -242,6 +258,7 @@ export async function fetchClosedKlines(symbol, startMs, nowMs, fetchImpl = fetc
       lastClosedOpen
     );
     const params = new URLSearchParams({
+      endpoint: "kline",
       category: "linear",
       symbol,
       interval: "5",
@@ -250,11 +267,12 @@ export async function fetchClosedKlines(symbol, startMs, nowMs, fetchImpl = fetc
       limit: String(API_LIMIT),
     });
     const response = await fetchImpl(
-      `https://api.bybit.com/v5/market/kline?${params}`,
+      `${baseUrl}?${params}`,
       { headers: { Accept: "application/json", "User-Agent": "Bybit-Entry-Backtest/1" } }
     );
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const body = await response.json();
+    const responseBody = await response.json();
+    const body = responseBody?.data ?? responseBody;
     if (body.retCode !== 0) throw new Error(`${body.retCode}: ${body.retMsg}`);
     for (const row of body.result?.list ?? []) {
       const openTime = Number(row[0]);
@@ -279,6 +297,7 @@ export async function updateLedger({
   if (!Array.isArray(ledger.entries)) ledger.entries = [];
   const added = addSnapshotEntries(ledger, latest);
   let changed = added.length > 0;
+  const kline = { attempted: 0, succeeded: 0, failed: 0 };
 
   const bySymbol = new Map();
   for (const entry of ledger.entries) {
@@ -289,19 +308,22 @@ export async function updateLedger({
 
   for (const [symbol, entries] of bySymbol) {
     const startMs = Math.min(...entries.map(nextOpenTime));
+    kline.attempted++;
     try {
       const candles = await fetchClosedKlines(symbol, startMs, nowMs, fetchImpl);
+      kline.succeeded++;
       for (const entry of entries) {
         if (applyCandles(entry, candles)) changed = true;
       }
     } catch (error) {
+      kline.failed++;
       warn(`warning: ${symbol} kline update skipped: ${error.message}`);
     }
   }
 
   ledger.summary = summarize(ledger.entries);
   if (changed) ledger.updatedAt = new Date(nowMs).toISOString();
-  return { ledger, added, changed };
+  return { ledger, added, changed, kline };
 }
 
 export async function run({ root = process.cwd(), fetchImpl = fetch, nowMs = Date.now() } = {}) {
@@ -326,9 +348,14 @@ export async function run({ root = process.cwd(), fetchImpl = fetch, nowMs = Dat
     `Entry ledger updated. added=${result.added.length} total=${ledger.summary.total} ` +
     `open=${ledger.summary.open} success=${ledger.summary.success} fail=${ledger.summary.fail}`
   );
+  console.log(
+    `Kline update. attempted=${result.kline.attempted} ` +
+    `succeeded=${result.kline.succeeded} failed=${result.kline.failed}`
+  );
   if (result.added.length) {
     console.log("New entries:", result.added.map(e => `${e.symbol}:${e.direction}`));
   }
+  assertKlineProgress(result.kline);
   return result;
 }
 
