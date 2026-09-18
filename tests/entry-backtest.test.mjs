@@ -3,10 +3,12 @@ import assert from "node:assert/strict";
 import {
   addSnapshotEntries,
   applyCandles,
+  assertKlineProgress,
   createLedger,
   fetchClosedKlines,
   mfeBucket,
   summarize,
+  updateLedger,
 } from "../scripts/update-entry-backtest.mjs";
 
 const T0 = Date.parse("2026-09-18T00:00:00.000Z");
@@ -211,4 +213,51 @@ test("kline fetch is incremental, paginated, and excludes the forming candle", a
   assert.equal(calls.length, 2);
   assert.equal(rows.length, 1002);
   assert.equal(Number(rows.at(-1)[0]), now - 300000);
+});
+
+test("proxy-wrapped kline responses are accepted", async () => {
+  let requestedUrl;
+  const fetchImpl = async url => {
+    requestedUrl = url;
+    return {
+      ok: true,
+      json: async () => ({
+        proxyStatus: "ok",
+        data: { retCode: 0, result: { list: [[String(T0), "100", "101", "99", "100"]] } },
+      }),
+    };
+  };
+  const rows = await fetchClosedKlines("TESTUSDT", T0, T0 + 300000, fetchImpl);
+  assert.equal(rows.length, 1);
+  assert.match(requestedUrl, /ybit-market-api\.vercel\.app\/api\/market/);
+  assert.equal(new URL(requestedUrl).searchParams.get("endpoint"), "kline");
+});
+
+test("kline failures are counted while other symbols continue", async () => {
+  const ledger = createLedger();
+  ledger.entries = [entry(), { ...entry(), symbol: "OKUSDT" }];
+  const warnings = [];
+  const result = await updateLedger({
+    ledger,
+    latest: {},
+    nowMs: T0 + 300000,
+    warn: message => warnings.push(message),
+    fetchImpl: async url => {
+      const symbol = new URL(url).searchParams.get("symbol");
+      if (symbol === "TESTUSDT") return { ok: false, status: 403 };
+      return { ok: true, json: async () => ({ data: { retCode: 0, result: { list: [] } } }) };
+    },
+  });
+  assert.deepEqual(result.kline, { attempted: 2, succeeded: 1, failed: 1 });
+  assert.equal(warnings.length, 1);
+});
+
+test("all attempted kline failures make the CLI fail", () => {
+  assert.throws(
+    () => assertKlineProgress({ attempted: 2, succeeded: 0, failed: 2 }),
+    /All kline updates failed/
+  );
+  assert.doesNotThrow(() =>
+    assertKlineProgress({ attempted: 2, succeeded: 1, failed: 1 })
+  );
 });
