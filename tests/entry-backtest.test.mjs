@@ -7,6 +7,7 @@ import {
   createLedger,
   fetchClosedKlines,
   mfeBucket,
+  migrateEntries,
   summarize,
   updateLedger,
 } from "../scripts/update-entry-backtest.mjs";
@@ -29,10 +30,19 @@ const entry = (direction = "LONG") => ({
   mfePrice: 100,
   maeBeforeSuccessPct: 0,
   firstProfitHitAt: null,
+  hit05: false,
+  hit05At: null,
+  hit10: false,
+  hit10At: null,
+  tradeStatus: "OPEN",
+  tradeTerminalAt: null,
+  tradeCheckedThrough: new Date(T0).toISOString(),
   stopHitAt: null,
   status: "OPEN",
   deepDrawdownSuccess: false,
   mfeBucket: null,
+  runner2: false,
+  runner5: false,
   checkedThrough: new Date(T0).toISOString(),
   updatedAt: new Date(T0).toISOString(),
 });
@@ -109,6 +119,30 @@ test("same candle profit and stop is adverse-first conservative FAIL", () => {
   assert.equal(row.status, "FAIL");
   assert.ok(row.firstProfitHitAt);
   assert.ok(row.stopHitAt);
+  assert.equal(row.hit10, false);
+  assert.equal(row.tradeStatus, "FAIL");
+});
+
+test("+0.5% keeps legacy success while +1% remains a separate open outcome", () => {
+  const row = entry();
+  applyCandles(row, [candle(0, 100.6, 99.8)]);
+  assert.equal(row.status, "SUCCESS");
+  assert.equal(row.hit05, true);
+  assert.equal(row.tradeStatus, "OPEN");
+  assert.equal(row.hit10, false);
+  applyCandles(row, [candle(1, 101.1, 99.9)]);
+  assert.equal(row.status, "SUCCESS");
+  assert.equal(row.tradeStatus, "SUCCESS");
+  assert.equal(row.hit10, true);
+});
+
+test("runner flags follow continuing MFE after terminal status", () => {
+  const row = entry();
+  applyCandles(row, [candle(0, 100.2, 96.4), candle(1, 105, 99)]);
+  assert.equal(row.status, "FAIL");
+  assert.equal(row.tradeStatus, "FAIL");
+  assert.equal(row.runner2, true);
+  assert.equal(row.runner5, true);
 });
 
 test("SUCCESS stays locked while later MAE continues updating", () => {
@@ -179,6 +213,57 @@ test("snapshot time falls back and non-executable signals are ignored", () => {
   assert.equal(added[0].entryTime, "2026-09-18T01:00:00.000Z");
 });
 
+test("new entries freeze the lightweight candidate snapshot", () => {
+  const ledger = createLedger();
+  const latest = {
+    radar: {
+      scannedAt: "2026-09-18T01:00:00Z",
+      longEntryCandidates: [{
+        symbol: "AUSDT", direction: "LONG", entrySignal: "EARLY_ENTRY",
+        candidateQuality: 77, finalCandidateScore: 81, timingScore: 72,
+        timingRiskFlags: ["PRICE_WARM"],
+        crossExchangeSummary: { confirmation: "CONFIRMED" },
+        keyMetrics: { price: 10, oi15mPct: 1, oi30mPct: 2, oi1hPct: 3 },
+      }],
+    },
+  };
+  const [row] = addSnapshotEntries(ledger, latest);
+  assert.deepEqual({
+    oi15mPct: row.oi15mPct, oi30mPct: row.oi30mPct, oi1hPct: row.oi1hPct,
+    finalCandidateScore: row.finalCandidateScore, candidateQuality: row.candidateQuality,
+    timingScore: row.timingScore, crossConfirmation: row.crossConfirmation,
+    timingRiskFlags: row.timingRiskFlags, entrySignal: row.entrySignal, direction: row.direction,
+  }, {
+    oi15mPct: 1, oi30mPct: 2, oi1hPct: 3, finalCandidateScore: 81,
+    candidateQuality: 77, timingScore: 72, crossConfirmation: "CONFIRMED",
+    timingRiskFlags: ["PRICE_WARM"], entrySignal: "EARLY_ENTRY", direction: "LONG",
+  });
+});
+
+test("legacy migration backfills only an exact historical snapshot", () => {
+  const exact = entry();
+  delete exact.hit05; delete exact.hit10; delete exact.tradeStatus;
+  delete exact.tradeCheckedThrough; delete exact.runner2; delete exact.runner5;
+  const unmatched = { ...entry(), symbol: "OTHERUSDT" };
+  for (const key of ["oi15mPct", "oi30mPct", "oi1hPct", "finalCandidateScore", "candidateQuality", "timingScore", "crossConfirmation", "timingRiskFlags"]) {
+    delete exact[key]; delete unmatched[key];
+  }
+  const ledger = { entries: [exact, unmatched] };
+  migrateEntries(ledger, {}, { snapshots: [{
+    scannedAt: exact.entryTime,
+    candidates: [{
+      symbol: exact.symbol, direction: exact.direction, candidateQuality: 70,
+      finalCandidateScore: 75, timingScore: 80, timingRiskFlags: [],
+      crossConfirmation: "CONFIRMED", oi15mPct: 1, oi30mPct: 2, oi1hPct: 3,
+    }],
+  }] });
+  assert.equal(exact.finalCandidateScore, 75);
+  assert.equal(exact.oi1hPct, 3);
+  assert.equal(exact.tradeCheckedThrough, exact.entryTime);
+  assert.equal(unmatched.finalCandidateScore, null);
+  assert.equal(unmatched.timingRiskFlags, null);
+});
+
 test("MFE buckets and summary use fixed boundaries", () => {
   assert.equal(mfeBucket(0.49), null);
   assert.equal(mfeBucket(0.5), "+0.5~1%");
@@ -191,6 +276,7 @@ test("MFE buckets and summary use fixed boundaries", () => {
   rows[1].status = "FAIL"; rows[1].mfeBucket = ">+5%";
   assert.deepEqual(summarize(rows), {
     total: 3, open: 1, success: 1, fail: 1, deepDrawdownSuccess: 1,
+    hit05: 0, hit10: 0, tradeSuccess: 0, runner2: 0, runner5: 0,
     mfeBuckets: { "+0.5~1%": 1, "+1~2%": 0, "+2~5%": 0, ">+5%": 1 },
   });
 });

@@ -22,6 +22,7 @@ export const RULES = Object.freeze({
   leverageReference: "10x",
   pnlUnit: "underlying_pct",
   profitThresholdPct: 0.5,
+  tradeSuccessThresholdPct: 1,
   stopThresholdPct: -3.5,
   deepDrawdownThresholdPct: -2,
   timeLimitMinutes: null,
@@ -52,6 +53,11 @@ export function createLedger() {
       open: 0,
       success: 0,
       fail: 0,
+      hit05: 0,
+      hit10: 0,
+      tradeSuccess: 0,
+      runner2: 0,
+      runner5: 0,
       deepDrawdownSuccess: 0,
       mfeBuckets: emptyBuckets(),
     },
@@ -73,6 +79,11 @@ export function summarize(entries) {
     open: 0,
     success: 0,
     fail: 0,
+    hit05: 0,
+    hit10: 0,
+    tradeSuccess: 0,
+    runner2: 0,
+    runner5: 0,
     deepDrawdownSuccess: 0,
     mfeBuckets: emptyBuckets(),
   };
@@ -82,9 +93,118 @@ export function summarize(entries) {
     else if (entry.status === "FAIL") summary.fail++;
     else summary.open++;
     if (entry.deepDrawdownSuccess === true) summary.deepDrawdownSuccess++;
+    if (entry.hit05 === true) summary.hit05++;
+    if (entry.hit10 === true) summary.hit10++;
+    if (entry.tradeStatus === "SUCCESS") summary.tradeSuccess++;
+    if (entry.runner2 === true) summary.runner2++;
+    if (entry.runner5 === true) summary.runner5++;
     if (entry.mfeBucket) summary.mfeBuckets[entry.mfeBucket]++;
   }
   return summary;
+}
+
+const nullableNumber = value => {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+};
+
+function candidateFeatures(candidate) {
+  return {
+    oi15mPct: nullableNumber(candidate?.keyMetrics?.oi15mPct ?? candidate?.oi15mPct),
+    oi30mPct: nullableNumber(candidate?.keyMetrics?.oi30mPct ?? candidate?.oi30mPct),
+    oi1hPct: nullableNumber(candidate?.keyMetrics?.oi1hPct ?? candidate?.oi1hPct),
+    finalCandidateScore: nullableNumber(
+      candidate?.finalCandidateScore ?? candidate?.candidateQuality
+    ),
+    candidateQuality: nullableNumber(candidate?.candidateQuality),
+    timingScore: nullableNumber(candidate?.timingScore),
+    crossConfirmation:
+      candidate?.crossExchangeSummary?.confirmation ??
+      candidate?.crossConfirmation ??
+      null,
+    timingRiskFlags: Array.isArray(candidate?.timingRiskFlags)
+      ? [...candidate.timingRiskFlags]
+      : null,
+    entrySignal: candidate?.entrySignal ?? null,
+    direction: candidate?.direction ?? null,
+  };
+}
+
+function allLatestCandidates(latest) {
+  const radar = latest?.radar ?? {};
+  const pools = [
+    ...ENTRY_POOLS.map(([name]) => radar[name]),
+    radar.longCandidatePool,
+    radar.shortCandidatePool,
+    radar.tradFiLongCandidatePool,
+    radar.tradFiShortCandidatePool,
+    radar.longCandidates,
+    radar.shortCandidates,
+    radar.tradFiLongCandidates,
+    radar.tradFiShortCandidates,
+  ];
+  return pools.flatMap(pool => Array.isArray(pool) ? pool : []);
+}
+
+function snapshotCandidate(snapshot, entry) {
+  return (snapshot?.candidates ?? []).find(candidate =>
+    candidate?.symbol === entry.symbol &&
+    String(candidate?.direction ?? "").toUpperCase() === entry.direction
+  ) ?? null;
+}
+
+export function migrateEntries(ledger, latest, history) {
+  const latestTime = validTime(latest?.radar?.scannedAt ?? latest?.snapshot?.fetchedAt);
+  const latestCandidates = allLatestCandidates(latest);
+  const snapshots = Array.isArray(history?.snapshots) ? history.snapshots : [];
+  let changed = false;
+
+  for (const entry of ledger.entries) {
+    const defaults = {
+      hit05: entry.status === "SUCCESS",
+      hit05At: entry.status === "SUCCESS" ? entry.firstProfitHitAt ?? null : null,
+      hit10: false,
+      hit10At: null,
+      tradeStatus: "OPEN",
+      tradeTerminalAt: null,
+      tradeCheckedThrough: entry.entryTime,
+      runner2: Number(entry.mfePct) >= 2,
+      runner5: Number(entry.mfePct) >= 5,
+    };
+    for (const [key, value] of Object.entries(defaults)) {
+      if (!(key in entry)) {
+        entry[key] = value;
+        changed = true;
+      }
+    }
+
+    const featureKeys = [
+      "oi15mPct", "oi30mPct", "oi1hPct", "finalCandidateScore",
+      "candidateQuality", "timingScore", "crossConfirmation", "timingRiskFlags",
+    ];
+    if (featureKeys.some(key => !(key in entry))) {
+      const entryTime = validTime(entry.entryTime);
+      const historical = snapshots.find(snapshot =>
+        validTime(snapshot?.scannedAt ?? snapshot?.fetchedAt) === entryTime
+      );
+      const source = snapshotCandidate(historical, entry) ??
+        (latestTime === entryTime
+          ? latestCandidates.find(candidate =>
+              candidate?.symbol === entry.symbol &&
+              String(candidate?.direction ?? "").toUpperCase() === entry.direction
+            )
+          : null);
+      const features = source ? candidateFeatures(source) : {};
+      for (const key of featureKeys) {
+        if (!(key in entry)) {
+          entry[key] = features[key] ?? null;
+          changed = true;
+        }
+      }
+    }
+  }
+  return changed;
 }
 
 export function assertKlineProgress(kline) {
@@ -127,6 +247,7 @@ export function addSnapshotEntries(ledger, latest) {
 
       const entry = {
         symbol,
+        ...candidateFeatures(candidate),
         direction,
         entrySignal,
         entryPrice,
@@ -137,10 +258,19 @@ export function addSnapshotEntries(ledger, latest) {
         mfePrice: entryPrice,
         maeBeforeSuccessPct: 0,
         firstProfitHitAt: null,
+        hit05: false,
+        hit05At: null,
+        hit10: false,
+        hit10At: null,
+        tradeStatus: "OPEN",
+        tradeTerminalAt: null,
+        tradeCheckedThrough: entryTime,
         stopHitAt: null,
         status: "OPEN",
         deepDrawdownSuccess: false,
         mfeBucket: null,
+        runner2: false,
+        runner5: false,
         entryCandleChecked: false,
         checkedThrough: entryTime,
         updatedAt: entryTime,
@@ -174,12 +304,16 @@ export function applyCandles(entry, candles) {
 
   let changed = false;
   const checkedMs = Date.parse(entry.checkedThrough ?? entry.entryTime);
+  const tradeCheckedMs = Date.parse(entry.tradeCheckedThrough ?? entry.entryTime);
   const entryMs = Date.parse(entry.entryTime);
   const entryOpenMs = Math.floor(entryMs / INTERVAL_MS) * INTERVAL_MS;
 
   for (const candle of sorted) {
     const closeMs = candle.openTime + INTERVAL_MS;
-    if (candle.openTime < entryOpenMs || closeMs <= checkedMs) continue;
+    if (candle.openTime < entryOpenMs) continue;
+    const updateLegacy = closeMs > checkedMs;
+    const updateTrade = closeMs > tradeCheckedMs;
+    if (!updateLegacy && !updateTrade) continue;
 
     const favorablePrice = entry.direction === "LONG" ? candle.high : candle.low;
     const adversePrice = entry.direction === "LONG" ? candle.low : candle.high;
@@ -192,21 +326,22 @@ export function applyCandles(entry, candles) {
     const adversePct = Math.min(0, moveForPrice(entry, adversePrice));
     const hitAt = new Date(closeMs).toISOString();
 
-    if (favorablePct > entry.mfePct) {
+    if (updateLegacy && favorablePct > entry.mfePct) {
       entry.mfePct = round(favorablePct);
       entry.mfePrice = favorablePrice;
     }
-    if (adversePct < entry.maePct) {
+    if (updateLegacy && adversePct < entry.maePct) {
       entry.maePct = round(adversePct);
       entry.maePrice = adversePrice;
     }
 
     const profitHit = favorablePct >= RULES.profitThresholdPct;
+    const tradeProfitHit = favorablePct >= RULES.tradeSuccessThresholdPct;
     const stopHit = adversePct <= RULES.stopThresholdPct;
-    if (profitHit && !entry.firstProfitHitAt) entry.firstProfitHitAt = hitAt;
-    if (stopHit && !entry.stopHitAt) entry.stopHitAt = hitAt;
+    if (updateLegacy && profitHit && !entry.firstProfitHitAt) entry.firstProfitHitAt = hitAt;
+    if (updateLegacy && stopHit && !entry.stopHitAt) entry.stopHitAt = hitAt;
 
-    if (entry.status === "OPEN") {
+    if (updateLegacy && entry.status === "OPEN") {
       entry.maeBeforeSuccessPct = round(
         Math.min(entry.maeBeforeSuccessPct ?? 0, adversePct)
       );
@@ -223,10 +358,33 @@ export function applyCandles(entry, candles) {
       }
     }
 
-    entry.mfeBucket = mfeBucket(entry.mfePct);
-    if (candle.openTime === entryOpenMs) entry.entryCandleChecked = true;
-    entry.checkedThrough = hitAt;
-    entry.updatedAt = hitAt;
+    if (updateTrade) {
+      if (entry.tradeStatus === "OPEN") {
+        if (stopHit) {
+          entry.tradeStatus = "FAIL";
+          entry.tradeTerminalAt = hitAt;
+        } else if (tradeProfitHit) {
+          entry.hit10 = true;
+          entry.hit10At = hitAt;
+          entry.tradeStatus = "SUCCESS";
+          entry.tradeTerminalAt = hitAt;
+        }
+      }
+      entry.tradeCheckedThrough = hitAt;
+    }
+
+    if (updateLegacy) {
+      if (entry.status === "SUCCESS" && entry.hit05 !== true) {
+        entry.hit05 = true;
+        entry.hit05At = entry.firstProfitHitAt;
+      }
+      entry.mfeBucket = mfeBucket(entry.mfePct);
+      entry.runner2 = entry.mfePct >= 2;
+      entry.runner5 = entry.mfePct >= 5;
+      if (candle.openTime === entryOpenMs) entry.entryCandleChecked = true;
+      entry.checkedThrough = hitAt;
+      entry.updatedAt = hitAt;
+    }
     changed = true;
   }
   return changed;
@@ -239,6 +397,16 @@ function nextOpenTime(entry) {
     return Math.floor(entryTime / INTERVAL_MS) * INTERVAL_MS;
   }
   return Math.ceil(checked / INTERVAL_MS) * INTERVAL_MS;
+}
+
+function nextRequiredOpenTime(entry) {
+  return Math.min(
+    nextOpenTime(entry),
+    nextOpenTime({
+      entryTime: entry.entryTime,
+      checkedThrough: entry.tradeCheckedThrough ?? entry.entryTime,
+    })
+  );
 }
 
 export async function fetchClosedKlines(
@@ -288,6 +456,7 @@ export async function fetchClosedKlines(
 export async function updateLedger({
   ledger,
   latest,
+  history = null,
   nowMs = Date.now(),
   fetchImpl = fetch,
   warn = message => console.warn(message),
@@ -295,8 +464,9 @@ export async function updateLedger({
   ledger.version = "ENTRY-BACKTEST-V1";
   ledger.rules = { ...RULES };
   if (!Array.isArray(ledger.entries)) ledger.entries = [];
+  let changed = migrateEntries(ledger, latest, history);
   const added = addSnapshotEntries(ledger, latest);
-  let changed = added.length > 0;
+  changed = added.length > 0 || changed;
   const kline = { attempted: 0, succeeded: 0, failed: 0 };
 
   const bySymbol = new Map();
@@ -307,7 +477,7 @@ export async function updateLedger({
   }
 
   for (const [symbol, entries] of bySymbol) {
-    const startMs = Math.min(...entries.map(nextOpenTime));
+    const startMs = Math.min(...entries.map(nextRequiredOpenTime));
     kline.attempted++;
     try {
       const candles = await fetchClosedKlines(symbol, startMs, nowMs, fetchImpl);
@@ -328,8 +498,15 @@ export async function updateLedger({
 
 export async function run({ root = process.cwd(), fetchImpl = fetch, nowMs = Date.now() } = {}) {
   const latestPath = path.join(root, "data", "latest.json");
+  const historyPath = path.join(root, "data", "history.json");
   const ledgerPath = path.join(root, "data", "entry-backtest.json");
   const latest = JSON.parse(fs.readFileSync(latestPath, "utf8"));
+  let history = null;
+  try {
+    history = JSON.parse(fs.readFileSync(historyPath, "utf8"));
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
   let ledger = createLedger();
   try {
     ledger = JSON.parse(fs.readFileSync(ledgerPath, "utf8"));
@@ -338,7 +515,7 @@ export async function run({ root = process.cwd(), fetchImpl = fetch, nowMs = Dat
   }
 
   const before = JSON.stringify(ledger);
-  const result = await updateLedger({ ledger, latest, nowMs, fetchImpl });
+  const result = await updateLedger({ ledger, latest, history, nowMs, fetchImpl });
   const after = JSON.stringify(result.ledger);
   if (after !== before) {
     fs.mkdirSync(path.dirname(ledgerPath), { recursive: true });
