@@ -59,6 +59,11 @@ export function createLedger() {
       runner2: 0,
       runner5: 0,
       deepDrawdownSuccess: 0,
+      cleanSuccess: 0,
+      dirtySuccess: 0,
+      fakeSuccess: 0,
+      post05SevereGiveback: 0,
+      returnedBelowEntry05: 0,
       mfeBuckets: emptyBuckets(),
     },
     entries: [],
@@ -85,6 +90,11 @@ export function summarize(entries) {
     runner2: 0,
     runner5: 0,
     deepDrawdownSuccess: 0,
+    cleanSuccess: 0,
+    dirtySuccess: 0,
+    fakeSuccess: 0,
+    post05SevereGiveback: 0,
+    returnedBelowEntry05: 0,
     mfeBuckets: emptyBuckets(),
   };
 
@@ -98,9 +108,35 @@ export function summarize(entries) {
     if (entry.tradeStatus === "SUCCESS") summary.tradeSuccess++;
     if (entry.runner2 === true) summary.runner2++;
     if (entry.runner5 === true) summary.runner5++;
+    if (entry.profitQuality === "CLEAN_SUCCESS") summary.cleanSuccess++;
+    if (entry.profitQuality === "DIRTY_SUCCESS") summary.dirtySuccess++;
+    if (entry.profitQuality === "FAKE_SUCCESS") summary.fakeSuccess++;
+    if (entry.severeGiveback05 === true) summary.post05SevereGiveback++;
+    if (entry.returnedBelowEntry05 === true) summary.returnedBelowEntry05++;
     if (entry.mfeBucket) summary.mfeBuckets[entry.mfeBucket]++;
   }
   return summary;
+}
+
+export function profitQuality(entry) {
+  const fakeSuccess =
+    entry.hit05 === true &&
+    entry.hit10 !== true &&
+    entry.severeGiveback05 === true;
+
+  // A +0.5% touch followed by a full-candle stop is more informative than
+  // the generic FAIL label, so preserve it as FAKE_SUCCESS.
+  if (fakeSuccess) return "FAKE_SUCCESS";
+  if (entry.tradeStatus === "OPEN") return "OPEN";
+  if (entry.status === "FAIL" || entry.tradeStatus === "FAIL") return "FAIL";
+  if (entry.tradeStatus === "SUCCESS" && Number(entry.mfePct) >= 5) {
+    return "RUNNER";
+  }
+  if (entry.tradeStatus === "SUCCESS" && entry.dirtySuccess05 === true) {
+    return "DIRTY_SUCCESS";
+  }
+  if (entry.tradeStatus === "SUCCESS") return "CLEAN_SUCCESS";
+  return "OPEN";
 }
 
 const nullableNumber = value => {
@@ -171,12 +207,24 @@ export function migrateEntries(ledger, latest, history) {
       tradeCheckedThrough: entry.entryTime,
       runner2: Number(entry.mfePct) >= 2,
       runner5: Number(entry.mfePct) >= 5,
+      post05MaePct: null,
+      post10MaePct: null,
+      returnedBelowEntry05: false,
+      returnedBelowEntry10: false,
+      dirtySuccess05: false,
+      severeGiveback05: false,
     };
     for (const [key, value] of Object.entries(defaults)) {
       if (!(key in entry)) {
         entry[key] = value;
         changed = true;
       }
+    }
+
+    const nextProfitQuality = profitQuality(entry);
+    if (entry.profitQuality !== nextProfitQuality) {
+      entry.profitQuality = nextProfitQuality;
+      changed = true;
     }
 
     const featureKeys = [
@@ -271,6 +319,13 @@ export function addSnapshotEntries(ledger, latest) {
         mfeBucket: null,
         runner2: false,
         runner5: false,
+        post05MaePct: null,
+        post10MaePct: null,
+        returnedBelowEntry05: false,
+        returnedBelowEntry10: false,
+        dirtySuccess05: false,
+        severeGiveback05: false,
+        profitQuality: "OPEN",
         entryCandleChecked: false,
         checkedThrough: entryTime,
         updatedAt: entryTime,
@@ -313,7 +368,11 @@ export function applyCandles(entry, candles) {
     if (candle.openTime < entryOpenMs) continue;
     const updateLegacy = closeMs > checkedMs;
     const updateTrade = closeMs > tradeCheckedMs;
-    if (!updateLegacy && !updateTrade) continue;
+    const hit05Ms = Date.parse(entry.hit05At);
+    const hit10Ms = Date.parse(entry.hit10At);
+    const updatePost05 = Number.isFinite(hit05Ms) && candle.openTime >= hit05Ms;
+    const updatePost10 = Number.isFinite(hit10Ms) && candle.openTime >= hit10Ms;
+    if (!updateLegacy && !updateTrade && !updatePost05 && !updatePost10) continue;
 
     const favorablePrice = entry.direction === "LONG" ? candle.high : candle.low;
     const adversePrice = entry.direction === "LONG" ? candle.low : candle.high;
@@ -338,6 +397,25 @@ export function applyCandles(entry, candles) {
     const profitHit = favorablePct >= RULES.profitThresholdPct;
     const tradeProfitHit = favorablePct >= RULES.tradeSuccessThresholdPct;
     const stopHit = adversePct <= RULES.stopThresholdPct;
+
+    if (updatePost05) {
+      entry.post05MaePct = round(
+        Math.min(entry.post05MaePct ?? 0, adversePct)
+      );
+      entry.returnedBelowEntry05 =
+        entry.returnedBelowEntry05 === true || adversePct < 0;
+      entry.dirtySuccess05 =
+        entry.post05MaePct <= RULES.deepDrawdownThresholdPct;
+      entry.severeGiveback05 =
+        entry.post05MaePct <= RULES.stopThresholdPct;
+    }
+    if (updatePost10) {
+      entry.post10MaePct = round(
+        Math.min(entry.post10MaePct ?? 0, adversePct)
+      );
+      entry.returnedBelowEntry10 =
+        entry.returnedBelowEntry10 === true || adversePct < 0;
+    }
     if (updateLegacy && profitHit && !entry.firstProfitHitAt) entry.firstProfitHitAt = hitAt;
     if (updateLegacy && stopHit && !entry.stopHitAt) entry.stopHitAt = hitAt;
 
@@ -385,6 +463,7 @@ export function applyCandles(entry, candles) {
       entry.checkedThrough = hitAt;
       entry.updatedAt = hitAt;
     }
+    entry.profitQuality = profitQuality(entry);
     changed = true;
   }
   return changed;
@@ -400,13 +479,22 @@ function nextOpenTime(entry) {
 }
 
 function nextRequiredOpenTime(entry) {
-  return Math.min(
+  const cursors = [
     nextOpenTime(entry),
     nextOpenTime({
       entryTime: entry.entryTime,
       checkedThrough: entry.tradeCheckedThrough ?? entry.entryTime,
-    })
-  );
+    }),
+  ];
+  if (entry.hit05 === true && entry.post05MaePct == null) {
+    const hit05Ms = Date.parse(entry.hit05At);
+    if (Number.isFinite(hit05Ms)) cursors.push(hit05Ms);
+  }
+  if (entry.hit10 === true && entry.post10MaePct == null) {
+    const hit10Ms = Date.parse(entry.hit10At);
+    if (Number.isFinite(hit10Ms)) cursors.push(hit10Ms);
+  }
+  return Math.min(...cursors);
 }
 
 export async function fetchClosedKlines(

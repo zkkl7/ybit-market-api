@@ -8,6 +8,7 @@ import {
   fetchClosedKlines,
   mfeBucket,
   migrateEntries,
+  profitQuality,
   summarize,
   updateLedger,
 } from "../scripts/update-entry-backtest.mjs";
@@ -43,6 +44,13 @@ const entry = (direction = "LONG") => ({
   mfeBucket: null,
   runner2: false,
   runner5: false,
+  post05MaePct: null,
+  post10MaePct: null,
+  returnedBelowEntry05: false,
+  returnedBelowEntry10: false,
+  dirtySuccess05: false,
+  severeGiveback05: false,
+  profitQuality: "OPEN",
   checkedThrough: new Date(T0).toISOString(),
   updatedAt: new Date(T0).toISOString(),
 });
@@ -134,6 +142,63 @@ test("+0.5% keeps legacy success while +1% remains a separate open outcome", () 
   assert.equal(row.status, "SUCCESS");
   assert.equal(row.tradeStatus, "SUCCESS");
   assert.equal(row.hit10, true);
+});
+
+test("post +0.5% MAE starts with the next full candle", () => {
+  const row = entry();
+  applyCandles(row, [candle(0, 100.6, 97)]);
+  assert.equal(row.hit05, true);
+  assert.equal(row.post05MaePct, null);
+  assert.equal(row.returnedBelowEntry05, false);
+
+  applyCandles(row, [candle(1, 100.4, 98.5)]);
+  assert.equal(row.post05MaePct, -1.5);
+  assert.equal(row.returnedBelowEntry05, true);
+});
+
+test("the low of the +0.5% hit candle is excluded from post +0.5% MAE", () => {
+  const row = entry();
+  applyCandles(row, [candle(0, 100.6, 97.5), candle(1, 100.2, 99.5)]);
+  assert.equal(row.maePct, -2.5);
+  assert.equal(row.post05MaePct, -0.5);
+  assert.equal(row.dirtySuccess05, false);
+});
+
+test("+0.5% then a severe giveback without +1% is FAKE_SUCCESS", () => {
+  const row = entry();
+  applyCandles(row, [candle(0, 100.6, 99.8), candle(1, 100.4, 96.4)]);
+  assert.equal(row.hit10, false);
+  assert.equal(row.severeGiveback05, true);
+  assert.equal(row.profitQuality, "FAKE_SUCCESS");
+});
+
+test("successful +1% trade with post +0.5% MAE at -2% is DIRTY_SUCCESS", () => {
+  const row = entry();
+  applyCandles(row, [
+    candle(0, 100.6, 99.8),
+    candle(1, 100.8, 98),
+    candle(2, 101.1, 99.5),
+  ]);
+  assert.equal(row.tradeStatus, "SUCCESS");
+  assert.equal(row.dirtySuccess05, true);
+  assert.equal(row.profitQuality, "DIRTY_SUCCESS");
+});
+
+test("successful trade with MFE at +5% is RUNNER", () => {
+  const row = entry();
+  applyCandles(row, [candle(0, 101.1, 99.8), candle(1, 105, 99)]);
+  assert.equal(row.tradeStatus, "SUCCESS");
+  assert.equal(row.profitQuality, "RUNNER");
+});
+
+test("post +1% MAE also starts with the next full candle", () => {
+  const row = entry();
+  applyCandles(row, [candle(0, 101.1, 97)]);
+  assert.equal(row.hit10, true);
+  assert.equal(row.post10MaePct, null);
+  applyCandles(row, [candle(1, 101, 99)]);
+  assert.equal(row.post10MaePct, -1);
+  assert.equal(row.returnedBelowEntry10, true);
 });
 
 test("runner flags follow continuing MFE after terminal status", () => {
@@ -260,6 +325,9 @@ test("legacy migration backfills only an exact historical snapshot", () => {
   assert.equal(exact.finalCandidateScore, 75);
   assert.equal(exact.oi1hPct, 3);
   assert.equal(exact.tradeCheckedThrough, exact.entryTime);
+  assert.equal(exact.post05MaePct, null);
+  assert.equal(exact.returnedBelowEntry05, false);
+  assert.equal(exact.profitQuality, "OPEN");
   assert.equal(unmatched.finalCandidateScore, null);
   assert.equal(unmatched.timingRiskFlags, null);
 });
@@ -277,8 +345,34 @@ test("MFE buckets and summary use fixed boundaries", () => {
   assert.deepEqual(summarize(rows), {
     total: 3, open: 1, success: 1, fail: 1, deepDrawdownSuccess: 1,
     hit05: 0, hit10: 0, tradeSuccess: 0, runner2: 0, runner5: 0,
+    cleanSuccess: 0, dirtySuccess: 0, fakeSuccess: 0,
+    post05SevereGiveback: 0, returnedBelowEntry05: 0,
     mfeBuckets: { "+0.5~1%": 1, "+1~2%": 0, "+2~5%": 0, ">+5%": 1 },
   });
+});
+
+test("profit quality summary counts clean, dirty, fake, and giveback fields", () => {
+  const clean = { ...entry(), profitQuality: "CLEAN_SUCCESS" };
+  const dirty = {
+    ...entry(), profitQuality: "DIRTY_SUCCESS", returnedBelowEntry05: true,
+  };
+  const fake = {
+    ...entry(), profitQuality: "FAKE_SUCCESS", severeGiveback05: true,
+    returnedBelowEntry05: true,
+  };
+  const summary = summarize([clean, dirty, fake]);
+  assert.equal(summary.cleanSuccess, 1);
+  assert.equal(summary.dirtySuccess, 1);
+  assert.equal(summary.fakeSuccess, 1);
+  assert.equal(summary.post05SevereGiveback, 1);
+  assert.equal(summary.returnedBelowEntry05, 2);
+});
+
+test("profit quality preserves original failure and clean success semantics", () => {
+  assert.equal(profitQuality({ ...entry(), tradeStatus: "FAIL" }), "FAIL");
+  assert.equal(profitQuality({
+    ...entry(), status: "SUCCESS", tradeStatus: "SUCCESS", hit10: true,
+  }), "CLEAN_SUCCESS");
 });
 
 test("kline fetch is incremental, paginated, and excludes the forming candle", async () => {
