@@ -20,7 +20,12 @@ test('history persists timing fields without changing entry ranking or requiring
     execFileSync(process.execPath, [fileURLToPath(new URL('../scripts/enrich-history.mjs', import.meta.url))], { cwd: root });
     const latest = JSON.parse(fs.readFileSync(path.join(root, 'data/latest.json')));
     const history = JSON.parse(fs.readFileSync(path.join(root, 'data/history.json')));
-    assert.deepEqual(latest.radar.longEntryCandidates, [candidate]);
+    assert.equal(latest.radar.longEntryCandidates.length, 1);
+    assert.equal(latest.radar.longEntryCandidates[0].symbol, candidate.symbol);
+    assert.equal(latest.radar.longEntryCandidates[0].entrySignal, candidate.entrySignal);
+    assert.equal(typeof latest.radar.longEntryCandidates[0].runnerScore, 'number');
+    assert.equal(latest.radar.longEntryCandidates[0].finalCandidateScore,
+      latest.radar.longCandidatePool[0].finalCandidateScore);
     assert.equal(latest.radar.longCandidatePool[0].seenInLast3, 1);
     const saved = history.snapshots[0].candidates[0];
     assert.equal(saved.entrySignal, 'EARLY_ENTRY');

@@ -667,6 +667,135 @@ function reasonFor(row, direction, persistent, xsum) {
   return bits.join("；") || "结构尚未形成持续性优势";
 }
 
+function classifyRunner(candidate) {
+  const numeric = value => value == null || value === "" ? NaN : Number(value);
+  const reasons = [];
+  const riskFlags = Array.isArray(candidate.timingRiskFlags)
+    ? candidate.timingRiskFlags
+    : [];
+  const direction = String(candidate.direction || "").toUpperCase();
+  const entrySignal = candidate.entrySignal ?? "WAIT";
+  const finalScore = numeric(
+    candidate.finalCandidateScore ?? candidate.candidateQuality
+  );
+  const xsum = candidate.crossExchangeSummary || {};
+  const metrics = candidate.keyMetrics || {};
+  const oi30 = numeric(metrics.oi30mPct);
+  const oi1h = numeric(metrics.oi1hPct);
+  const price1h = numeric(metrics.price1hPct);
+  const price24h = numeric(metrics.price24hPct);
+
+  let score = 0;
+
+  if (Number.isFinite(finalScore) && finalScore >= 80) {
+    score += 25;
+    reasons.push("FINAL_SCORE_80_PLUS");
+  } else if (Number.isFinite(finalScore) && finalScore >= 70) {
+    score += 15;
+    reasons.push("FINAL_SCORE_70_PLUS");
+  }
+
+  if (riskFlags.length === 0) {
+    score += 15;
+    reasons.push("NO_TIMING_RISK_FLAGS");
+  }
+
+  if (xsum.confirmation === "CONFIRMED") {
+    score += 15;
+    reasons.push("CROSS_CONFIRMED");
+  } else if (xsum.confirmation === "LOCAL_ONLY") {
+    score -= 10;
+    reasons.push("LOCAL_ONLY");
+  }
+
+  if (entrySignal === "RETEST_ENTRY") {
+    score += 10;
+    reasons.push("RETEST_ENTRY");
+  } else if (entrySignal === "EARLY_ENTRY") {
+    score += 12;
+    reasons.push("EARLY_ENTRY");
+  }
+
+  if (Number.isFinite(oi30) && oi30 >= 2) {
+    score += 10;
+    reasons.push("OI_30M_STRONG");
+  }
+  if (Number.isFinite(oi1h) && oi1h >= 3) {
+    score += 10;
+    reasons.push("OI_1H_STRONG");
+  }
+  if (Number.isFinite(oi30) && Number.isFinite(oi1h) && oi30 > 0 && oi1h > 0) {
+    score += 5;
+    reasons.push("OI_BUILD_CONTINUING");
+  }
+
+  const directionalPrice =
+    Number.isFinite(price1h) &&
+    Math.abs(price1h) <= 3 &&
+    ((direction === "LONG" && price1h >= 0) ||
+      (direction === "SHORT" && price1h <= 0));
+  if (directionalPrice) {
+    score += 10;
+    reasons.push("PRICE_1H_DIRECTIONAL_HEALTHY");
+  }
+
+  if (riskFlags.includes("SETUP_WEAK")) {
+    score -= 20;
+    reasons.push("SETUP_WEAK");
+  }
+  if (riskFlags.some(flag => ["PRICE_WARM", "PRICE_15M_WARM"].includes(flag))) {
+    score -= 15;
+    reasons.push("PRICE_WARM");
+  }
+  if (riskFlags.includes("24H_EXTENDED")) {
+    score -= 20;
+    reasons.push("PRICE_24H_EXTENDED");
+  }
+  if (Number.isFinite(price1h) && Math.abs(price1h) > 5) {
+    score -= 15;
+    reasons.push("PRICE_1H_OVER_5");
+  }
+  if (Number.isFinite(price24h) && Math.abs(price24h) > 25) {
+    score -= 15;
+    reasons.push("PRICE_24H_OVER_25");
+  }
+  if (riskFlags.some(flag => [
+    "EXTREME_LONG_FUNDING",
+    "EXTREME_SHORT_FUNDING",
+    "LONG_FUNDING_CROWDED",
+    "SHORT_FUNDING_CROWDED",
+  ].includes(flag))) {
+    score -= 15;
+    reasons.push("FUNDING_CROWDED");
+  }
+
+  score = round(Math.max(0, Math.min(100, score)), 1);
+
+  const obviousRiskCount = [
+    riskFlags.includes("SETUP_WEAK"),
+    riskFlags.some(flag => [
+      "PRICE_WARM",
+      "PRICE_15M_WARM",
+      "PRICE_1H_EXTENDED",
+      "PRICE_15M_EXTENDED",
+    ].includes(flag)),
+    riskFlags.some(flag => ["24H_EXTENDED", "SOURCE_EXTENDED"].includes(flag)),
+  ].filter(Boolean).length;
+
+  let tradeStyle = score >= 55 ? "RUNNER" : "SCALP";
+  if (entrySignal === "NO_CHASE" || obviousRiskCount >= 2) {
+    tradeStyle = "WATCH";
+    reasons.push(entrySignal === "NO_CHASE" ? "NO_CHASE" : "MULTIPLE_TIMING_RISKS");
+  }
+
+  return {
+    tradeStyle,
+    runnerPotential: score >= 70 ? "HIGH" : score >= 55 ? "MEDIUM" : "LOW",
+    runnerScore: score,
+    runnerReasons: [...new Set(reasons)],
+  };
+}
+
 function evaluateCandidate(row, direction) {
   const market = marketClassification(row.symbol);
 
@@ -766,7 +895,7 @@ const manualChaseAlert =
         message: null,
       };
 
-  return {
+  const candidate = {
     symbol: row.symbol,
     direction,
 
@@ -860,6 +989,10 @@ const manualChaseAlert =
     sourceExecutionState:
       row.executionState,
   };
+
+  return market.marketType === "CRYPTO_PERP"
+    ? { ...candidate, ...classifyRunner(candidate) }
+    : candidate;
 }
 
 function isLongEligible(row) {
@@ -970,4 +1103,4 @@ export default async function handler(req, res) {
   }
 }
 
-export { marketClassification, crossExchangeSummary, evaluateCandidate, buildCandidateLists };
+export { marketClassification, crossExchangeSummary, classifyRunner, evaluateCandidate, buildCandidateLists };

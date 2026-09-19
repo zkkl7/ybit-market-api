@@ -13,8 +13,8 @@ function load() {
   });
   const transformed = source
     .replace('export default async function handler', 'async function handler')
-    .replace(/export \{ marketClassification, crossExchangeSummary, evaluateCandidate, buildCandidateLists \};/, '') +
-    '\nglobalThis.api = { marketClassification, crossExchangeSummary, evaluateCandidate, buildCandidateLists };';
+    .replace(/export \{ marketClassification, crossExchangeSummary, classifyRunner, evaluateCandidate, buildCandidateLists \};/, '') +
+    '\nglobalThis.api = { marketClassification, crossExchangeSummary, classifyRunner, evaluateCandidate, buildCandidateLists };';
   vm.runInContext(transformed, context);
   return context.api;
 }
@@ -176,4 +176,62 @@ test('entry pools exclude NO_CHASE and retain separate crypto and TradFi groups'
   assert.ok(out.longEntryCandidates.every(c => c.marketType === 'CRYPTO_PERP'));
   assert.equal(out.tradFiLongEntryCandidates[0].symbol, 'SOFIUSDT');
   assert.ok(out.longCandidatePool.some(c => c.entrySignal === 'NO_CHASE'));
+});
+
+const runnerCandidate = {
+  direction: 'LONG', finalCandidateScore: 84, entrySignal: 'RETEST_ENTRY',
+  timingRiskFlags: [], crossExchangeSummary: { confirmation: 'CONFIRMED' },
+  keyMetrics: { oi30mPct: 2.5, oi1hPct: 4, price1hPct: 2, price24hPct: 8 },
+};
+
+test('clean confirmed retest with a high final score is a high-potential runner', () => {
+  const out = api.classifyRunner(runnerCandidate);
+  assert.equal(out.tradeStyle, 'RUNNER');
+  assert.equal(out.runnerPotential, 'HIGH');
+  assert.ok(out.runnerScore >= 70);
+  assert.ok(out.runnerReasons.includes('CROSS_CONFIRMED'));
+  assert.ok(out.runnerReasons.includes('RETEST_ENTRY'));
+});
+
+test('setup weak, local-only and extended risks downgrade runner classification', () => {
+  const out = api.classifyRunner({
+    ...runnerCandidate,
+    entrySignal: 'NO_CHASE',
+    timingRiskFlags: ['SETUP_WEAK', '24H_EXTENDED'],
+    crossExchangeSummary: { confirmation: 'LOCAL_ONLY' },
+    keyMetrics: { ...runnerCandidate.keyMetrics, price1hPct: 6, price24hPct: 26 },
+  });
+  assert.equal(out.tradeStyle, 'WATCH');
+  assert.equal(out.runnerPotential, 'LOW');
+  for (const reason of ['SETUP_WEAK', 'LOCAL_ONLY', 'PRICE_24H_EXTENDED', 'PRICE_24H_OVER_25']) {
+    assert.ok(out.runnerReasons.includes(reason), reason);
+  }
+});
+
+test('short direction receives the same healthy directional price credit', () => {
+  const long = api.classifyRunner(runnerCandidate);
+  const short = api.classifyRunner({
+    ...runnerCandidate,
+    direction: 'SHORT',
+    keyMetrics: { ...runnerCandidate.keyMetrics, price1hPct: -2, price24hPct: -8 },
+  });
+  assert.equal(short.runnerScore, long.runnerScore);
+  assert.equal(short.runnerPotential, 'HIGH');
+  assert.ok(short.runnerReasons.includes('PRICE_1H_DIRECTIONAL_HEALTHY'));
+});
+
+test('runner labels do not change V4.4 entry membership or signals', () => {
+  const rows = [
+    ...Array.from({ length: 5 }, (_, i) => ({ ...base, price: 1.01, symbol: `RUNNER${i}` })),
+    { ...base, symbol: 'NOCHASE', price1hPct: 10 },
+  ];
+  const out = api.buildCandidateLists({ executionStates: rows });
+  assert.equal(out.longEntryCandidates.length, 3);
+  assert.ok(out.longEntryCandidates.every(candidate => executable.has(candidate.entrySignal)));
+  assert.ok(out.longCandidatePool.some(candidate =>
+    candidate.symbol === 'NOCHASE' && candidate.entrySignal === 'NO_CHASE'
+  ));
+  assert.ok(out.longCandidatePool.every(candidate =>
+    typeof candidate.runnerScore === 'number' && Array.isArray(candidate.runnerReasons)
+  ));
 });

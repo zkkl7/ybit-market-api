@@ -13,6 +13,116 @@ const clamp = (n, min = 0, max = 100) =>
 const round = (n, d = 1) =>
   Number.isFinite(n) ? Number(n.toFixed(d)) : null;
 
+function classifyRunner(candidate) {
+  const numeric = value => value == null || value === "" ? NaN : Number(value);
+  const reasons = [];
+  const riskFlags = Array.isArray(candidate.timingRiskFlags)
+    ? candidate.timingRiskFlags
+    : [];
+  const direction = String(candidate.direction || "").toUpperCase();
+  const entrySignal = candidate.entrySignal ?? "WAIT";
+  const finalScore = numeric(candidate.finalCandidateScore ?? candidate.candidateQuality);
+  const confirmation = candidate.crossExchangeSummary?.confirmation;
+  const metrics = candidate.keyMetrics || {};
+  const oi30 = numeric(metrics.oi30mPct);
+  const oi1h = numeric(metrics.oi1hPct);
+  const price1h = numeric(metrics.price1hPct);
+  const price24h = numeric(metrics.price24hPct);
+  let score = 0;
+
+  if (Number.isFinite(finalScore) && finalScore >= 80) {
+    score += 25;
+    reasons.push("FINAL_SCORE_80_PLUS");
+  } else if (Number.isFinite(finalScore) && finalScore >= 70) {
+    score += 15;
+    reasons.push("FINAL_SCORE_70_PLUS");
+  }
+  if (riskFlags.length === 0) {
+    score += 15;
+    reasons.push("NO_TIMING_RISK_FLAGS");
+  }
+  if (confirmation === "CONFIRMED") {
+    score += 15;
+    reasons.push("CROSS_CONFIRMED");
+  } else if (confirmation === "LOCAL_ONLY") {
+    score -= 10;
+    reasons.push("LOCAL_ONLY");
+  }
+  if (entrySignal === "RETEST_ENTRY") {
+    score += 10;
+    reasons.push("RETEST_ENTRY");
+  } else if (entrySignal === "EARLY_ENTRY") {
+    score += 12;
+    reasons.push("EARLY_ENTRY");
+  }
+  if (Number.isFinite(oi30) && oi30 >= 2) {
+    score += 10;
+    reasons.push("OI_30M_STRONG");
+  }
+  if (Number.isFinite(oi1h) && oi1h >= 3) {
+    score += 10;
+    reasons.push("OI_1H_STRONG");
+  }
+  if (Number.isFinite(oi30) && Number.isFinite(oi1h) && oi30 > 0 && oi1h > 0) {
+    score += 5;
+    reasons.push("OI_BUILD_CONTINUING");
+  }
+  if (
+    Number.isFinite(price1h) && Math.abs(price1h) <= 3 &&
+    ((direction === "LONG" && price1h >= 0) ||
+      (direction === "SHORT" && price1h <= 0))
+  ) {
+    score += 10;
+    reasons.push("PRICE_1H_DIRECTIONAL_HEALTHY");
+  }
+  if (riskFlags.includes("SETUP_WEAK")) {
+    score -= 20;
+    reasons.push("SETUP_WEAK");
+  }
+  if (riskFlags.some(flag => ["PRICE_WARM", "PRICE_15M_WARM"].includes(flag))) {
+    score -= 15;
+    reasons.push("PRICE_WARM");
+  }
+  if (riskFlags.includes("24H_EXTENDED")) {
+    score -= 20;
+    reasons.push("PRICE_24H_EXTENDED");
+  }
+  if (Number.isFinite(price1h) && Math.abs(price1h) > 5) {
+    score -= 15;
+    reasons.push("PRICE_1H_OVER_5");
+  }
+  if (Number.isFinite(price24h) && Math.abs(price24h) > 25) {
+    score -= 15;
+    reasons.push("PRICE_24H_OVER_25");
+  }
+  if (riskFlags.some(flag => [
+    "EXTREME_LONG_FUNDING", "EXTREME_SHORT_FUNDING",
+    "LONG_FUNDING_CROWDED", "SHORT_FUNDING_CROWDED",
+  ].includes(flag))) {
+    score -= 15;
+    reasons.push("FUNDING_CROWDED");
+  }
+
+  score = round(clamp(score), 1);
+  const obviousRiskCount = [
+    riskFlags.includes("SETUP_WEAK"),
+    riskFlags.some(flag => ["PRICE_WARM", "PRICE_15M_WARM", "PRICE_1H_EXTENDED", "PRICE_15M_EXTENDED"].includes(flag)),
+    riskFlags.some(flag => ["24H_EXTENDED", "SOURCE_EXTENDED"].includes(flag)),
+  ].filter(Boolean).length;
+  let tradeStyle = score >= 55 ? "RUNNER" : "SCALP";
+  if (entrySignal === "NO_CHASE" || obviousRiskCount >= 2) {
+    tradeStyle = "WATCH";
+    reasons.push(entrySignal === "NO_CHASE" ? "NO_CHASE" : "MULTIPLE_TIMING_RISKS");
+  }
+
+  return {
+    tradeStyle,
+    runnerPotential: score >= 70 ? "HIGH" : score >= 55 ? "MEDIUM" : "LOW",
+    runnerScore: score,
+    runnerReasons: [...new Set(reasons)],
+  };
+}
+
 function readJson(file, fallback) {
   try {
     return JSON.parse(fs.readFileSync(file, "utf8"));
@@ -252,12 +362,17 @@ function calculateHistory(candidate, snapshots) {
   };
 }
 
-function enrichPool(pool, snapshots) {
+function enrichPool(pool, snapshots, includeRunner = false) {
   return (pool || [])
-    .map(candidate => ({
-      ...candidate,
-      ...calculateHistory(candidate, snapshots),
-    }))
+    .map(candidate => {
+      const enriched = {
+        ...candidate,
+        ...calculateHistory(candidate, snapshots),
+      };
+      return includeRunner
+        ? { ...enriched, ...classifyRunner(enriched) }
+        : enriched;
+    })
     .sort(
       (a, b) =>
         (b.finalCandidateScore ?? 0) -
@@ -310,10 +425,10 @@ const tradFiShortPool =
   [];
 
 const enrichedLong =
-  enrichPool(longPool, snapshots);
+  enrichPool(longPool, snapshots, true);
 
 const enrichedShort =
-  enrichPool(shortPool, snapshots);
+  enrichPool(shortPool, snapshots, true);
 
 const enrichedTradFiLong =
   enrichPool(tradFiLongPool, snapshots);
@@ -342,6 +457,34 @@ radar.longCandidates =
 
 radar.shortCandidates =
   enrichedShort.slice(0, 3);
+
+const syncEntryRunnerFields = (entries, enrichedPool) =>
+  (entries || []).map(entry => {
+    const enriched = enrichedPool.find(candidate =>
+      candidate.symbol === entry.symbol && candidate.direction === entry.direction
+    );
+    if (!enriched) return entry;
+    const {
+      finalCandidateScore, tradeStyle, runnerPotential, runnerScore, runnerReasons,
+    } = enriched;
+    return {
+      ...entry,
+      finalCandidateScore,
+      tradeStyle,
+      runnerPotential,
+      runnerScore,
+      runnerReasons,
+    };
+  });
+
+radar.longEntryCandidates = syncEntryRunnerFields(
+  radar.longEntryCandidates,
+  enrichedLong
+);
+radar.shortEntryCandidates = syncEntryRunnerFields(
+  radar.shortEntryCandidates,
+  enrichedShort
+);
 
 radar.tradFiLongCandidates =
   enrichedTradFiLong.slice(0, 3);
