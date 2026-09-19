@@ -1,84 +1,7 @@
 {
   "version": "RADAR-HISTORY-V1",
-  "updatedAt": "2026-09-19T00:45:34.983Z",
+  "updatedAt": "2026-09-19T00:58:47.331Z",
   "snapshots": [
-    {
-      "fetchedAt": "2026-09-18T22:42:48Z",
-      "scannedAt": "2026-09-18T22:42:48.418Z",
-      "candidates": [
-        {
-          "symbol": "BCHUSDT",
-          "direction": "LONG",
-          "candidateState": "ENTRY_NOW",
-          "candidateQuality": 74.8,
-          "finalCandidateScore": 69.6,
-          "entrySignal": "BREAKOUT_ENTRY",
-          "timingScore": 100,
-          "timingRiskFlags": [],
-          "price": 265.6,
-          "oi15mPct": 2.04,
-          "oi30mPct": 1.92,
-          "oi1hPct": 5.27,
-          "crossConfirmation": "MIXED",
-          "marketType": "CRYPTO_PERP"
-        },
-        {
-          "symbol": "LTCUSDT",
-          "direction": "LONG",
-          "candidateState": "PRE_ENTRY",
-          "candidateQuality": 68.1,
-          "finalCandidateScore": 64.9,
-          "entrySignal": "BREAKOUT_ENTRY",
-          "timingScore": 100,
-          "timingRiskFlags": [],
-          "price": 57.95,
-          "oi15mPct": 2.17,
-          "oi30mPct": 2.21,
-          "oi1hPct": 2.26,
-          "crossConfirmation": "LOCAL_ONLY",
-          "marketType": "CRYPTO_PERP"
-        },
-        {
-          "symbol": "FUSDT",
-          "direction": "LONG",
-          "candidateState": "PRE_ENTRY",
-          "candidateQuality": 55,
-          "finalCandidateScore": 61,
-          "entrySignal": "NO_CHASE",
-          "timingScore": 23,
-          "timingRiskFlags": [
-            "SETUP_WEAK",
-            "PRICE_1H_EXTENDED",
-            "24H_EXTENDED",
-            "SOURCE_EXTENDED"
-          ],
-          "price": 0.005544,
-          "oi15mPct": 2.91,
-          "oi30mPct": 13.77,
-          "oi1hPct": 12.98,
-          "crossConfirmation": "LOCAL_ONLY",
-          "marketType": "CRYPTO_PERP"
-        },
-        {
-          "symbol": "MONUSDT",
-          "direction": "SHORT",
-          "candidateState": "PRE_ENTRY",
-          "candidateQuality": 56.8,
-          "finalCandidateScore": 55.6,
-          "entrySignal": "BREAKOUT_ENTRY",
-          "timingScore": 96,
-          "timingRiskFlags": [
-            "SETUP_WEAK"
-          ],
-          "price": 0.02476,
-          "oi15mPct": 1.22,
-          "oi30mPct": 3.4,
-          "oi1hPct": 3.88,
-          "crossConfirmation": "MIXED",
-          "marketType": "CRYPTO_PERP"
-        }
-      ]
-    },
     {
       "fetchedAt": "2026-09-18T22:54:29Z",
       "scannedAt": "2026-09-18T22:54:28.366Z",
@@ -938,6 +861,179 @@
           "oi15mPct": 0.34,
           "oi30mPct": 0.12,
           "oi1hPct": 1.93,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        }
+      ]
+    },
+    {
+      "fetchedAt": "2026-09-19T00:58:42Z",
+      "scannedAt": "2026-09-19T00:58:42.191Z",
+      "candidates": [
+        {
+          "symbol": "AKEUSDT",
+          "direction": "LONG",
+          "candidateState": "ENTRY_NOW",
+          "candidateQuality": 89.4,
+          "finalCandidateScore": 91.8,
+          "entrySignal": "BREAKOUT_ENTRY",
+          "timingScore": 100,
+          "timingRiskFlags": [
+            "24H_WARM"
+          ],
+          "price": 0.047274,
+          "oi15mPct": 0.39,
+          "oi30mPct": 1.08,
+          "oi1hPct": 1.7,
+          "crossConfirmation": "CONFIRMED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "ENAUSDT",
+          "direction": "LONG",
+          "candidateState": "ENTRY_NOW",
+          "candidateQuality": 79.3,
+          "finalCandidateScore": 84.1,
+          "entrySignal": "ARMED",
+          "timingScore": 89,
+          "timingRiskFlags": [
+            "PRICE_15M_WARM",
+            "5M_SPIKE"
+          ],
+          "price": 0.17464,
+          "oi15mPct": 0.96,
+          "oi30mPct": 1.32,
+          "oi1hPct": 1.37,
+          "crossConfirmation": "CONFIRMED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "AVAXUSDT",
+          "direction": "LONG",
+          "candidateState": "RETEST_ENTRY",
+          "candidateQuality": 78.9,
+          "finalCandidateScore": 80,
+          "entrySignal": "RETEST_ENTRY",
+          "timingScore": 100,
+          "timingRiskFlags": [],
+          "price": 8.346,
+          "oi15mPct": 0.31,
+          "oi30mPct": 0.54,
+          "oi1hPct": 0.65,
+          "crossConfirmation": "CONFIRMED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "PONSUSDT",
+          "direction": "LONG",
+          "candidateState": "ENTRY_NOW",
+          "candidateQuality": 72.7,
+          "finalCandidateScore": 80,
+          "entrySignal": "BREAKOUT_ENTRY",
+          "timingScore": 100,
+          "timingRiskFlags": [],
+          "price": 0.6839,
+          "oi15mPct": 0.84,
+          "oi30mPct": 1.17,
+          "oi1hPct": 1.27,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "ADAUSDT",
+          "direction": "LONG",
+          "candidateState": "ENTRY_NOW",
+          "candidateQuality": 72.5,
+          "finalCandidateScore": 79.2,
+          "entrySignal": "BREAKOUT_ENTRY",
+          "timingScore": 100,
+          "timingRiskFlags": [],
+          "price": 0.2277,
+          "oi15mPct": 0.47,
+          "oi30mPct": 0.78,
+          "oi1hPct": 1.48,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "AXSUSDT",
+          "direction": "LONG",
+          "candidateState": "RETEST_ENTRY",
+          "candidateQuality": 78.8,
+          "finalCandidateScore": 72.9,
+          "entrySignal": "RETEST_ENTRY",
+          "timingScore": 100,
+          "timingRiskFlags": [],
+          "price": 1.0221,
+          "oi15mPct": 1.23,
+          "oi30mPct": 1.55,
+          "oi1hPct": 5.46,
+          "crossConfirmation": "MIXED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "CROSSUSDT",
+          "direction": "LONG",
+          "candidateState": "RETEST_ENTRY",
+          "candidateQuality": 70.4,
+          "finalCandidateScore": 72.4,
+          "entrySignal": "RETEST_ENTRY",
+          "timingScore": 98,
+          "timingRiskFlags": [],
+          "price": 0.14725,
+          "oi15mPct": 0.89,
+          "oi30mPct": 1.26,
+          "oi1hPct": 1.49,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "METUSDT",
+          "direction": "LONG",
+          "candidateState": "RETEST_ENTRY",
+          "candidateQuality": 63.4,
+          "finalCandidateScore": 69.3,
+          "entrySignal": "RETEST_ENTRY",
+          "timingScore": 98,
+          "timingRiskFlags": [],
+          "price": 0.2615,
+          "oi15mPct": 0.37,
+          "oi30mPct": 0.94,
+          "oi1hPct": 0.94,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "WLDUSDT",
+          "direction": "LONG",
+          "candidateState": "PRE_ENTRY",
+          "candidateQuality": 54.9,
+          "finalCandidateScore": 54,
+          "entrySignal": "EARLY_ENTRY",
+          "timingScore": 87,
+          "timingRiskFlags": [
+            "SETUP_WEAK"
+          ],
+          "price": 0.4273,
+          "oi15mPct": 0.84,
+          "oi30mPct": 0.89,
+          "oi1hPct": 0.86,
+          "crossConfirmation": "MIXED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "ZENUSDT",
+          "direction": "SHORT",
+          "candidateState": "PRE_ENTRY",
+          "candidateQuality": 62.1,
+          "finalCandidateScore": 65.7,
+          "entrySignal": "BREAKOUT_ENTRY",
+          "timingScore": 100,
+          "timingRiskFlags": [],
+          "price": 8.212,
+          "oi15mPct": 0.36,
+          "oi30mPct": 1.07,
+          "oi1hPct": 4.71,
           "crossConfirmation": "LOCAL_ONLY",
           "marketType": "CRYPTO_PERP"
         }
