@@ -130,9 +130,11 @@ function classifyV45Runner(candidate, legacyRunner) {
     candidate.sourceDirectionalBias === "NEUTRAL";
   const directionalConfirmation = candidate.strictPriceReclaim || candidate.strongAlignedFlow;
 
-  if (candidate.adverseOiFlowPrice) {
+  if (candidate.adverseOiFlowPrice || candidate.strongOpposingFlow) {
     v45RunnerPotential = "LOW";
-    reasons.push("OI_UP_CVD_AND_PRICE_AGAINST_DIRECTION");
+    reasons.push(candidate.adverseOiFlowPrice
+      ? "OI_UP_CVD_AND_PRICE_AGAINST_DIRECTION"
+      : "CVD_AND_ORDER_FLOW_OPPOSE_DIRECTION");
   } else if (candidate.entryStage !== "CONFIRMED" && v45RunnerPotential === "HIGH") {
     v45RunnerPotential = "MEDIUM";
     reasons.push("ENTRY_STAGE_PROBE");

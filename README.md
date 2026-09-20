@@ -19,3 +19,7 @@ candles. Its main candidate fields are:
 Recent public trades and a top-20 order-book snapshot are requested only for a
 bounded set of existing V4.4 candidates. Either request may fail independently;
 the scan then marks that source unavailable and continues with the V4.4 result.
+Opposing order flow is a confirmation gate: it can lower an otherwise confirmed
+setup to `PROBE`, while simultaneous opposing CVD and order flow caps V4.5
+runner potential at `LOW`. `BZUSDT` is classified with TradFi commodity
+perpetuals and is excluded from crypto candidate pools.

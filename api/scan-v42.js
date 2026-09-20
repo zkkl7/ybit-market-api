@@ -80,6 +80,9 @@ const TRADFI_SYMBOLS = new Set([
   "SAMSUNGUSDT",
   "SKHYNIXUSDT",
   "HYUNDAIUSDT",
+
+  // Commodity perpetuals exposed alongside Bybit TradFi products.
+  "BZUSDT",
 ]);
 
 const round = (value, decimals = 1) =>
@@ -838,7 +841,10 @@ function v45Confirmation(row, direction, entrySignal) {
     ? direction === "LONG" ? price >= support : true
     : row.priceStructure?.supportHeld === true;
   const alignedFlow = flowBias === directionBias;
-  const opposingFlow = flowBias === oppositeBias || cvdBias === oppositeBias;
+  const orderFlowOpposes = flowBias === oppositeBias;
+  const cvdOpposes = cvdBias === oppositeBias;
+  const opposingFlow = orderFlowOpposes || cvdOpposes;
+  const strongOpposingFlow = orderFlowOpposes && cvdOpposes;
   const imbalance = numeric(flow.buySellImbalance);
   const strongAlignedFlow = alignedFlow && Number.isFinite(imbalance) &&
     (direction === "LONG" ? imbalance >= 0.12 : imbalance <= -0.12);
@@ -859,19 +865,6 @@ function v45Confirmation(row, direction, entrySignal) {
   if (adverseOiFlowPrice) priceConfirmScore -= 25;
   priceConfirmScore = round(clamp(priceConfirmScore), 1);
 
-  const behaviorConfirmed = strictPriceReclaim ||
-    (strongAlignedFlow && !priceAgainst);
-  const executable = ["EARLY_ENTRY", "BREAKOUT_ENTRY", "RETEST_ENTRY"].includes(entrySignal);
-  const entryStage = executable && behaviorConfirmed && !adverseOiFlowPrice
-    ? "CONFIRMED"
-    : "PROBE";
-  const signalPrefix = entrySignal.endsWith("_ENTRY")
-    ? entrySignal.replace(/_ENTRY$/, "")
-    : entrySignal;
-  const v45EntrySignal = executable
-    ? `${signalPrefix}_${entryStage}`
-    : entrySignal;
-
   let directionConfidence = priceConfirmScore;
   if (alignedFlow) directionConfidence += 15;
   if (opposingFlow) directionConfidence -= 20;
@@ -882,12 +875,29 @@ function v45Confirmation(row, direction, entrySignal) {
   if (adverseOiFlowPrice) directionConfidence -= 20;
   directionConfidence = round(clamp(directionConfidence), 1);
 
-  const riskFlags = [];
-  if (!strictPriceReclaim) riskFlags.push("KEY_LEVEL_NOT_RECLAIMED");
-  if (opposingFlow) riskFlags.push("ORDER_FLOW_OPPOSES_DIRECTION");
-  if (adverseOiFlowPrice) riskFlags.push("OI_UP_CVD_AND_PRICE_AGAINST_DIRECTION");
-  if (flow.status !== "ok") riskFlags.push("ORDER_FLOW_UNAVAILABLE");
-  if (book.status !== "ok") riskFlags.push("ORDER_BOOK_UNAVAILABLE");
+  const behaviorConfirmed = strictPriceReclaim ||
+    (strongAlignedFlow && !priceAgainst);
+  const confirmationInvalidated = orderFlowOpposes ||
+    (cvdOpposes && directionConfidence < 60);
+  const executable = ["EARLY_ENTRY", "BREAKOUT_ENTRY", "RETEST_ENTRY"].includes(entrySignal);
+  const entryStage = executable && behaviorConfirmed &&
+    !adverseOiFlowPrice && !confirmationInvalidated
+    ? "CONFIRMED"
+    : "PROBE";
+  const signalPrefix = entrySignal.endsWith("_ENTRY")
+    ? entrySignal.replace(/_ENTRY$/, "")
+    : entrySignal;
+  const v45EntrySignal = executable
+    ? `${signalPrefix}_${entryStage}`
+    : entrySignal;
+
+  const riskFlags = new Set();
+  if (!strictPriceReclaim) riskFlags.add("KEY_LEVEL_NOT_RECLAIMED");
+  if (opposingFlow) riskFlags.add("ORDER_FLOW_OPPOSES_DIRECTION");
+  if (adverseOiFlowPrice) riskFlags.add("OI_UP_CVD_AND_PRICE_AGAINST_DIRECTION");
+  if (flow.status !== "ok") riskFlags.add("ORDER_FLOW_UNAVAILABLE");
+  if (book.status !== "ok") riskFlags.add("ORDER_BOOK_UNAVAILABLE");
+  const v45RiskFlags = [...riskFlags];
 
   return {
     entryStage,
@@ -909,8 +919,8 @@ function v45Confirmation(row, direction, entrySignal) {
     obiTop20: book.status === "ok" ? book.obiTop20 : null,
     orderBookBias,
     directionConfidence,
-    invalidationReason: riskFlags.length ? riskFlags.join(";") : null,
-    v45RiskFlags: riskFlags,
+    invalidationReason: v45RiskFlags.length ? v45RiskFlags.join(";") : null,
+    v45RiskFlags,
     v45DataFreshness: {
       collectedAt: row.v45Microstructure?.collectedAt ?? null,
       orderFlowStatus: flow.status || "unavailable",
@@ -923,6 +933,7 @@ function v45Confirmation(row, direction, entrySignal) {
     },
     adverseOiFlowPrice,
     strongAlignedFlow,
+    strongOpposingFlow,
   };
 }
 
@@ -933,9 +944,11 @@ function classifyV45Runner(candidate, legacyRunner) {
     candidate.sourceDirectionalBias === "NEUTRAL";
   const directionalConfirmation = candidate.strictPriceReclaim || candidate.strongAlignedFlow;
 
-  if (candidate.adverseOiFlowPrice) {
+  if (candidate.adverseOiFlowPrice || candidate.strongOpposingFlow) {
     v45RunnerPotential = "LOW";
-    reasons.push("OI_UP_CVD_AND_PRICE_AGAINST_DIRECTION");
+    reasons.push(candidate.adverseOiFlowPrice
+      ? "OI_UP_CVD_AND_PRICE_AGAINST_DIRECTION"
+      : "CVD_AND_ORDER_FLOW_OPPOSE_DIRECTION");
   } else if (candidate.entryStage !== "CONFIRMED" && v45RunnerPotential === "HIGH") {
     v45RunnerPotential = "MEDIUM";
     reasons.push("ENTRY_STAGE_PROBE");

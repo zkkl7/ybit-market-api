@@ -350,6 +350,109 @@ test('strong active flow can confirm immediately without waiting two 5m candles'
   assert.equal(out.v45EntrySignal, 'BREAKOUT_CONFIRMED');
 });
 
+test('DOT-like LONG with bearish CVD and order flow becomes PROBE and runner LOW', () => {
+  const out = api.evaluateCandidate({
+    ...base,
+    symbol: 'DOTUSDT',
+    directionalBias: 'BULLISH',
+    price: 1.01,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: true },
+    crossExchange: { status:'ok', oi1hPct:3, oi15mPct:2, oi5mPct:1, bybitOiSharePct:30 },
+    v45Microstructure: bearishMicrostructure,
+  }, 'LONG');
+  assert.equal(out.entrySignal, 'BREAKOUT_ENTRY');
+  assert.equal(out.strictPriceReclaim, true);
+  assert.equal(out.entryStage, 'PROBE');
+  assert.equal(out.v45EntrySignal, 'BREAKOUT_PROBE');
+  assert.equal(out.v45RunnerPotential, 'LOW');
+  assert.equal(out.v45RiskFlags.filter(flag =>
+    flag === 'ORDER_FLOW_OPPOSES_DIRECTION').length, 1);
+});
+
+test('EGLD-like LONG with bearish CVD and confidence below 60 becomes PROBE', () => {
+  const cvdOnlyOpposition = {
+    ...bearishMicrostructure,
+    flow: {
+      ...bearishMicrostructure.flow,
+      buySellImbalance: 0,
+      orderFlowBias: 'NEUTRAL',
+    },
+  };
+  const out = api.evaluateCandidate({
+    ...base,
+    symbol: 'EGLDUSDT',
+    directionalBias: 'BULLISH',
+    price: 1.001,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: false },
+    crossExchange: { status:'ok', oi1hPct:3, oi15mPct:2, oi5mPct:1, bybitOiSharePct:30 },
+    v45Microstructure: cvdOnlyOpposition,
+  }, 'LONG');
+  assert.equal(out.entrySignal, 'BREAKOUT_ENTRY');
+  assert.equal(out.strictPriceReclaim, true);
+  assert.equal(out.orderFlowBias, 'NEUTRAL');
+  assert.equal(out.cvdBias, 'BEARISH');
+  assert.ok(out.directionConfidence < 60);
+  assert.equal(out.entryStage, 'PROBE');
+  assert.notEqual(out.v45RunnerPotential, 'HIGH');
+  assert.equal(out.v45RiskFlags.filter(flag =>
+    flag === 'ORDER_FLOW_OPPOSES_DIRECTION').length, 1);
+});
+
+test('AVAX-like aligned price, CVD and order flow remains CONFIRMED', () => {
+  const out = api.evaluateCandidate({
+    ...base,
+    symbol: 'AVAXUSDT',
+    directionalBias: 'BULLISH',
+    price: 1.01,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: true },
+    v45Microstructure: bullishMicrostructure,
+  }, 'LONG');
+  assert.equal(out.entrySignal, 'BREAKOUT_ENTRY');
+  assert.equal(out.entryStage, 'CONFIRMED');
+  assert.equal(out.v45EntrySignal, 'BREAKOUT_CONFIRMED');
+  assert.ok(out.directionConfidence >= 60);
+  assert.equal(out.v45RiskFlags.includes('ORDER_FLOW_OPPOSES_DIRECTION'), false);
+});
+
+test('SHORT confirmation gate mirrors opposing bullish CVD and order flow', () => {
+  const out = api.evaluateCandidate({
+    ...base,
+    executionState: 'SHORT_BUILD',
+    directionalBias: 'BEARISH',
+    price: 0.99,
+    price5mPct: -0.2,
+    price15mPct: -0.4,
+    price1hPct: -1,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, lowerLows: true },
+    flow5m: { recentPrice30mPct: -1, recentOi30mPct: 2, recentSteps: [
+      {state:'SHORT_BUILD'}, {state:'SHORT_BUILD'}, {state:'SHORT_BUILD'},
+    ] },
+    crossExchange: { status:'ok', oi1hPct:3, oi15mPct:2, oi5mPct:1, bybitOiSharePct:30 },
+    v45Microstructure: bullishMicrostructure,
+  }, 'SHORT');
+  assert.equal(out.entrySignal, 'BREAKOUT_ENTRY');
+  assert.equal(out.strictPriceReclaim, true);
+  assert.equal(out.entryStage, 'PROBE');
+  assert.equal(out.v45RunnerPotential, 'LOW');
+  assert.ok(out.v45RiskFlags.includes('ORDER_FLOW_OPPOSES_DIRECTION'));
+});
+
+test('BZ commodity is classified as TradFi and excluded from crypto pools', () => {
+  const bz = {
+    ...base,
+    symbol: 'BZUSDT',
+    crossExchange: { status:'ok', oi1hPct:3, oi15mPct:2, oi5mPct:1, bybitOiSharePct:30 },
+  };
+  const classification = api.marketClassification('BZUSDT');
+  assert.equal(classification.marketType, 'TRADFI_PERP');
+  const out = api.buildCandidateLists({
+    executionStates: [bz, { ...base, symbol: 'CRYPTOUSDT' }],
+    candidates: [],
+  });
+  assert.equal(out.longCandidatePool.some(candidate => candidate.symbol === 'BZUSDT'), false);
+  assert.equal(out.tradFiLongCandidatePool.some(candidate => candidate.symbol === 'BZUSDT'), true);
+});
+
 test('STX and T regression fixtures keep old high-quality LONG but V4.5 marks them PROBE', () => {
   const fixtures = [
     { symbol: 'STXUSDT', price: 0.2838, keyLevel: 0.285, support: 0.278, price5mPct: 0.2 },
