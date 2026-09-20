@@ -1,104 +1,7 @@
 {
   "version": "RADAR-HISTORY-V1",
-  "updatedAt": "2026-09-20T06:17:10.800Z",
+  "updatedAt": "2026-09-20T06:44:34.031Z",
   "snapshots": [
-    {
-      "fetchedAt": "2026-09-20T04:13:40Z",
-      "scannedAt": "2026-09-20T04:13:39.856Z",
-      "candidates": [
-        {
-          "symbol": "SAGAUSDT",
-          "direction": "LONG",
-          "candidateState": "ENTRY_NOW",
-          "candidateQuality": 91.9,
-          "finalCandidateScore": 94.7,
-          "entrySignal": "ARMED",
-          "timingScore": 95,
-          "timingRiskFlags": [
-            "PRICE_WARM",
-            "PRICE_15M_WARM"
-          ],
-          "price": 0.027425,
-          "oi15mPct": 1.21,
-          "oi30mPct": 1.7,
-          "oi1hPct": 2.21,
-          "crossConfirmation": "CONFIRMED",
-          "marketType": "CRYPTO_PERP"
-        },
-        {
-          "symbol": "MUSDT",
-          "direction": "LONG",
-          "candidateState": "RETEST_ENTRY",
-          "candidateQuality": 70.6,
-          "finalCandidateScore": 67,
-          "entrySignal": "NO_CHASE",
-          "timingScore": 84,
-          "timingRiskFlags": [
-            "PRICE_WARM",
-            "PRICE_15M_WARM",
-            "24H_EXTENDED"
-          ],
-          "price": 1.6811,
-          "oi15mPct": 0.3,
-          "oi30mPct": 1.16,
-          "oi1hPct": 1.73,
-          "crossConfirmation": "CONFIRMED",
-          "marketType": "CRYPTO_PERP"
-        },
-        {
-          "symbol": "EPICUSDT",
-          "direction": "LONG",
-          "candidateState": "RETEST_ENTRY",
-          "candidateQuality": 65.4,
-          "finalCandidateScore": 62.7,
-          "entrySignal": "RETEST_ENTRY",
-          "timingScore": 100,
-          "timingRiskFlags": [],
-          "price": 0.4853,
-          "oi15mPct": 0.93,
-          "oi30mPct": 1.71,
-          "oi1hPct": 1.12,
-          "crossConfirmation": "LOCAL_ONLY",
-          "marketType": "CRYPTO_PERP"
-        },
-        {
-          "symbol": "MEGAUSDT",
-          "direction": "LONG",
-          "candidateState": "PRE_ENTRY",
-          "candidateQuality": 58.3,
-          "finalCandidateScore": 56.8,
-          "entrySignal": "ARMED",
-          "timingScore": 93,
-          "timingRiskFlags": [
-            "SETUP_WEAK"
-          ],
-          "price": 0.04275,
-          "oi15mPct": 1.21,
-          "oi30mPct": 1.54,
-          "oi1hPct": 2.07,
-          "crossConfirmation": "CONFIRMED",
-          "marketType": "CRYPTO_PERP"
-        },
-        {
-          "symbol": "TAOUSDT",
-          "direction": "LONG",
-          "candidateState": "PRE_ENTRY",
-          "candidateQuality": 52.9,
-          "finalCandidateScore": 52.4,
-          "entrySignal": "RETEST_ENTRY",
-          "timingScore": 96,
-          "timingRiskFlags": [
-            "SETUP_WEAK"
-          ],
-          "price": 252.83,
-          "oi15mPct": 0.33,
-          "oi30mPct": 0.77,
-          "oi1hPct": 0.94,
-          "crossConfirmation": "CONFIRMED",
-          "marketType": "CRYPTO_PERP"
-        }
-      ]
-    },
     {
       "fetchedAt": "2026-09-20T04:30:53Z",
       "scannedAt": "2026-09-20T04:30:53.139Z",
@@ -1011,6 +914,46 @@
           "oi1hPct": 1.83,
           "crossConfirmation": "CONFIRMED",
           "marketType": "TRADFI_PERP"
+        }
+      ]
+    },
+    {
+      "fetchedAt": "2026-09-20T06:44:29Z",
+      "scannedAt": "2026-09-20T06:44:29.009Z",
+      "candidates": [
+        {
+          "symbol": "ONGUSDT",
+          "direction": "LONG",
+          "candidateState": "RETEST_ENTRY",
+          "candidateQuality": 73.3,
+          "finalCandidateScore": 71.4,
+          "entrySignal": "ARMED",
+          "timingScore": 83,
+          "timingRiskFlags": [
+            "OI_NOT_FRESH"
+          ],
+          "price": 0.0908,
+          "oi15mPct": 0.16,
+          "oi30mPct": -0.06,
+          "oi1hPct": 5.81,
+          "crossConfirmation": "CONFIRMED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "JTOUSDT",
+          "direction": "SHORT",
+          "candidateState": "PRE_ENTRY",
+          "candidateQuality": 62,
+          "finalCandidateScore": 59.9,
+          "entrySignal": "BREAKOUT_ENTRY",
+          "timingScore": 100,
+          "timingRiskFlags": [],
+          "price": 0.5,
+          "oi15mPct": 0.69,
+          "oi30mPct": 1.86,
+          "oi1hPct": 0.82,
+          "crossConfirmation": "CONFIRMED",
+          "marketType": "CRYPTO_PERP"
         }
       ]
     }
