@@ -10,11 +10,13 @@ function load() {
     URLSearchParams,
     process: { env: {} },
     console,
+    setTimeout,
+    clearTimeout,
   });
   const transformed = source
     .replace('export default async function handler', 'async function handler')
-    .replace(/export \{ marketClassification, crossExchangeSummary, classifyRunner, evaluateCandidate, buildCandidateLists \};/, '') +
-    '\nglobalThis.api = { marketClassification, crossExchangeSummary, classifyRunner, evaluateCandidate, buildCandidateLists };';
+    .replace(/export \{[\s\S]*?\};\s*$/, '') +
+    '\nglobalThis.api = { marketClassification, crossExchangeSummary, classifyRunner, classifyV45Runner, parseRecentTrades, parseOrderBook, v45Confirmation, evaluateCandidate, buildCandidateLists, fetchMicrostructure, enrichMicrostructure, v45AbSummary };';
   vm.runInContext(transformed, context);
   return context.api;
 }
@@ -234,4 +236,197 @@ test('runner labels do not change V4.4 entry membership or signals', () => {
   assert.ok(out.longCandidatePool.every(candidate =>
     typeof candidate.runnerScore === 'number' && Array.isArray(candidate.runnerReasons)
   ));
+});
+
+const bearishMicrostructure = {
+  collectedAt: 1_000_000,
+  flow: {
+    status: 'ok', takerBuyVolume: 30, takerSellVolume: 70,
+    buySellImbalance: -0.4, cvd1m: -20, cvd3m: -35, cvd5m: -40,
+    cvdBias: 'BEARISH', orderFlowBias: 'BEARISH', sourceAt: 999_900, sampleCount: 100,
+  },
+  orderBook: {
+    status: 'ok', obiScore: -0.15, obiTop10: -0.12, obiTop20: -0.15,
+    orderBookBias: 'BEARISH', sourceAt: 999_950, ageMs: 50, depthLevels: 20,
+  },
+};
+
+const bullishMicrostructure = {
+  collectedAt: 1_000_000,
+  flow: {
+    status: 'ok', takerBuyVolume: 70, takerSellVolume: 30,
+    buySellImbalance: 0.4, cvd1m: 20, cvd3m: 35, cvd5m: 40,
+    cvdBias: 'BULLISH', orderFlowBias: 'BULLISH', sourceAt: 999_900, sampleCount: 100,
+  },
+  orderBook: {
+    status: 'ok', obiScore: 0.15, obiTop10: 0.12, obiTop20: 0.15,
+    orderBookBias: 'BULLISH', sourceAt: 999_950, ageMs: 50, depthLevels: 20,
+  },
+};
+
+test('V4.5 tightens breakout reclaim without changing the V4.4 entry signal', () => {
+  const row = {
+    ...base,
+    price: 0.997,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: false },
+  };
+  const out = api.evaluateCandidate(row, 'LONG');
+  assert.equal(out.entrySignal, 'BREAKOUT_ENTRY');
+  assert.equal(out.strictPriceReclaim, false);
+  assert.equal(out.v45EntrySignal, 'BREAKOUT_PROBE');
+  assert.equal(out.entryStage, 'PROBE');
+});
+
+test('retest that holds support but has not reclaimed key level stays PROBE', () => {
+  const out = api.evaluateCandidate({
+    ...base,
+    price: 0.997,
+    price5mPct: -0.2,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: false },
+  }, 'LONG');
+  assert.equal(out.entrySignal, 'RETEST_ENTRY');
+  assert.equal(out.v45EntrySignal, 'RETEST_PROBE');
+  assert.ok(out.v45RiskFlags.includes('KEY_LEVEL_NOT_RECLAIMED'));
+});
+
+test('rising OI with falling CVD and price strongly downgrades LONG', () => {
+  const out = api.evaluateCandidate({
+    ...base,
+    price: 0.997,
+    price5mPct: -0.2,
+    price15mPct: -0.4,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: false },
+    v45Microstructure: bearishMicrostructure,
+  }, 'LONG');
+  assert.equal(out.entrySignal, 'RETEST_ENTRY');
+  assert.equal(out.entryStage, 'PROBE');
+  assert.equal(out.adverseOiFlowPrice, true);
+  assert.equal(out.v45RunnerPotential, 'LOW');
+  assert.ok(out.invalidationReason.includes('OI_UP_CVD_AND_PRICE_AGAINST_DIRECTION'));
+});
+
+test('rising OI with rising CVD and price strongly downgrades SHORT symmetrically', () => {
+  const out = api.evaluateCandidate({
+    ...base,
+    executionState: 'SHORT_BUILD',
+    directionalBias: 'NEUTRAL',
+    price: 1.003,
+    price5mPct: 0.2,
+    price15mPct: 0.4,
+    price1hPct: -1,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: false, lowerLows: true },
+    flow5m: { recentPrice30mPct: -1, recentOi30mPct: 2, recentSteps: [
+      {state:'SHORT_BUILD'}, {state:'SHORT_BUILD'}, {state:'SHORT_BUILD'},
+    ] },
+    v45Microstructure: bullishMicrostructure,
+  }, 'SHORT');
+  assert.equal(out.entryStage, 'PROBE');
+  assert.equal(out.adverseOiFlowPrice, true);
+  assert.equal(out.v45RunnerPotential, 'LOW');
+});
+
+test('POSITION_BUILD plus NEUTRAL cannot keep V4.5 runner HIGH without direction confirmation', () => {
+  const out = api.evaluateCandidate({
+    ...base,
+    directionalBias: 'NEUTRAL',
+    price: 0.997,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: false },
+    crossExchange: { status:'ok', oi1hPct:3, oi15mPct:2, oi5mPct:1, bybitOiSharePct:30 },
+  }, 'LONG');
+  assert.equal(out.runnerPotential, 'HIGH');
+  assert.equal(out.entryStage, 'PROBE');
+  assert.equal(out.v45RunnerPotential, 'MEDIUM');
+});
+
+test('strong active flow can confirm immediately without waiting two 5m candles', () => {
+  const out = api.evaluateCandidate({
+    ...base,
+    price: 0.997,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: false },
+    v45Microstructure: bullishMicrostructure,
+  }, 'LONG');
+  assert.equal(out.strictPriceReclaim, false);
+  assert.equal(out.entryStage, 'CONFIRMED');
+  assert.equal(out.v45EntrySignal, 'BREAKOUT_CONFIRMED');
+});
+
+test('STX and T regression fixtures keep old high-quality LONG but V4.5 marks them PROBE', () => {
+  const fixtures = [
+    { symbol: 'STXUSDT', price: 0.2838, keyLevel: 0.285, support: 0.278, price5mPct: 0.2 },
+    { symbol: 'TUSDT', price: 0.0051, keyLevel: 0.00513, support: 0.00502, price5mPct: -0.2 },
+  ];
+  for (const fixture of fixtures) {
+    const out = api.evaluateCandidate({
+      ...base,
+      symbol: fixture.symbol,
+      price: fixture.price,
+      price5mPct: fixture.price5mPct,
+      priceStructure: {
+        ...base.priceStructure,
+        keyLevel: fixture.keyLevel,
+        support: fixture.support,
+        supportHeld: true,
+        keyLevelReclaimed: false,
+      },
+    }, 'LONG');
+    assert.ok(out.candidateQuality >= 70, fixture.symbol);
+    assert.ok(executable.has(out.entrySignal), fixture.symbol);
+    assert.equal(out.entryStage, 'PROBE', fixture.symbol);
+    assert.notEqual(out.v45RunnerPotential, 'HIGH', fixture.symbol);
+  }
+});
+
+test('trade and top-10/top-20 order book parsers expose stable confirmation fields', () => {
+  const now = 1_000_000;
+  const trades = api.parseRecentTrades([
+    { T: now - 30_000, S: 'Buy', v: '7' },
+    { T: now - 30_000, S: 'Sell', v: '3' },
+    { T: now - 120_000, S: 'Buy', v: '2' },
+    { T: now - 240_000, S: 'Sell', v: '1' },
+  ], now);
+  assert.equal(trades.takerBuyVolume, 9);
+  assert.equal(trades.takerSellVolume, 4);
+  assert.equal(trades.cvd1m, 4);
+  assert.equal(trades.cvd3m, 6);
+  assert.equal(trades.cvd5m, 5);
+  assert.equal(trades.orderFlowBias, 'BULLISH');
+
+  const book = api.parseOrderBook({
+    ts: now - 50,
+    b: Array.from({ length: 20 }, (_, i) => [String(1 - i / 1000), '2']),
+    a: Array.from({ length: 20 }, (_, i) => [String(1 + i / 1000), '1']),
+  }, now);
+  assert.ok(book.obiTop10 > 0 && book.obiTop20 > 0);
+  assert.equal(book.orderBookBias, 'BULLISH');
+  assert.equal(book.depthLevels, 20);
+  assert.equal(book.ageMs, 50);
+});
+
+test('microstructure request failure is marked unavailable and preserves V4.4 entries', async () => {
+  const legacy = api.buildCandidateLists({ executionStates: [base], candidates: [] });
+  const enrichedBase = await api.enrichMicrostructure(
+    { executionStates: [base], candidates: [] },
+    async () => { throw new Error('rate limited'); },
+    1_000_000,
+  );
+  const enriched = api.buildCandidateLists(enrichedBase);
+  assert.deepEqual(
+    enriched.longEntryCandidates.map(candidate => candidate.entrySignal),
+    legacy.longEntryCandidates.map(candidate => candidate.entrySignal),
+  );
+  assert.equal(enriched.longCandidatePool[0].v45DataFreshness.orderFlowStatus, 'unavailable');
+  assert.equal(enriched.longCandidatePool[0].v45DataFreshness.orderBookStatus, 'unavailable');
+});
+
+test('manual chase and TradFi classification remain independent of V4.5 confirmation', () => {
+  const chase = api.evaluateCandidate({
+    ...base, executionRisk: 'EXTENDED', price1hPct: 10,
+    oi15mPct: 4, oi30mPct: 6, oi1hPct: 8,
+  }, 'LONG');
+  assert.equal(chase.entrySignal, 'NO_CHASE');
+  assert.equal(chase.manualChaseAlert.enabled, true);
+  const tradfi = api.evaluateCandidate({ ...base, symbol: 'SOFIUSDT' }, 'LONG');
+  assert.equal(tradfi.marketType, 'TRADFI_PERP');
+  assert.equal(tradfi.riskTag, 'TRADFI_EVENT_SENSITIVE');
+  assert.equal(tradfi.runnerPotential, undefined);
 });

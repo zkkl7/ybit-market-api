@@ -159,6 +159,17 @@ function compactCandidate(c) {
     timingScore: c.timingScore ?? null,
     timingRiskFlags: c.timingRiskFlags ?? [],
 
+    entryStage: c.entryStage ?? null,
+    v45EntrySignal: c.v45EntrySignal ?? null,
+    priceConfirmScore: c.priceConfirmScore ?? null,
+    cvdBias: c.cvdBias ?? null,
+    orderFlowBias: c.orderFlowBias ?? null,
+    obiScore: c.obiScore ?? null,
+    directionConfidence: c.directionConfidence ?? null,
+    invalidationReason: c.invalidationReason ?? null,
+    v45RunnerPotential: c.v45RunnerPotential ?? null,
+    v45DataFreshness: c.v45DataFreshness ?? null,
+
     price: c.keyMetrics?.price ?? null,
 
     oi15mPct: c.keyMetrics?.oi15mPct ?? null,
@@ -466,6 +477,12 @@ const syncEntryRunnerFields = (entries, enrichedPool) =>
     if (!enriched) return entry;
     const {
       finalCandidateScore, tradeStyle, runnerPotential, runnerScore, runnerReasons,
+      entryStage, v45EntryStage, v45EntrySignal, v45Confirmation,
+      priceConfirmScore, takerBuyVolume, takerSellVolume, buySellImbalance,
+      cvd1m, cvd3m, cvd5m, cvdBias, orderFlowBias,
+      obiScore, obiTop10, obiTop20, orderBookBias,
+      directionConfidence, invalidationReason, v45RiskFlags,
+      v45RunnerPotential, v45RunnerReasons, v45DataFreshness,
     } = enriched;
     return {
       ...entry,
@@ -474,6 +491,29 @@ const syncEntryRunnerFields = (entries, enrichedPool) =>
       runnerPotential,
       runnerScore,
       runnerReasons,
+      entryStage,
+      v45EntryStage,
+      v45EntrySignal,
+      v45Confirmation,
+      priceConfirmScore,
+      takerBuyVolume,
+      takerSellVolume,
+      buySellImbalance,
+      cvd1m,
+      cvd3m,
+      cvd5m,
+      cvdBias,
+      orderFlowBias,
+      obiScore,
+      obiTop10,
+      obiTop20,
+      orderBookBias,
+      directionConfidence,
+      invalidationReason,
+      v45RiskFlags,
+      v45RunnerPotential,
+      v45RunnerReasons,
+      v45DataFreshness,
     };
   });
 
