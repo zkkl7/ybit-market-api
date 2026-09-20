@@ -3,7 +3,7 @@ const BASE_SCAN_URL =
   "https://ybit-market-api.vercel.app/api/scan";
 
 const BYBIT_BASE = "https://api.bybit.com";
-const VERSION = "OI-RADAR-V4.5";
+const VERSION = "OI-RADAR-V4.6";
 const V45_MAX_MICROSTRUCTURE_SYMBOLS = 12;
 const V45_FETCH_CONCURRENCY = 4;
 const V45_FETCH_TIMEOUT_MS = 2500;
@@ -137,6 +137,15 @@ function parseRecentTrades(list, nowMs = Date.now()) {
     ? (totals.takerBuyVolume - totals.takerSellVolume) / totalVolume
     : 0;
   const cvdBias = classifyCvdBias(windows);
+  const cvdSlope1m = windows.cvd1m;
+  const cvdSlope3m = windows.cvd3m / 3;
+  const cvdSlope5m = windows.cvd5m / 5;
+  const cvdAcceleration = cvdSlope1m - cvdSlope5m;
+  const cvdAccelerationBias = cvdAcceleration > 0
+    ? "BULLISH"
+    : cvdAcceleration < 0
+      ? "BEARISH"
+      : "NEUTRAL";
   let orderFlowBias = "NEUTRAL";
   if (cvdBias === "BULLISH" && buySellImbalance >= 0.05) orderFlowBias = "BULLISH";
   if (cvdBias === "BEARISH" && buySellImbalance <= -0.05) orderFlowBias = "BEARISH";
@@ -148,6 +157,11 @@ function parseRecentTrades(list, nowMs = Date.now()) {
     cvd1m: round(windows.cvd1m, 8),
     cvd3m: round(windows.cvd3m, 8),
     cvd5m: round(windows.cvd5m, 8),
+    cvdSlope1m: round(cvdSlope1m, 8),
+    cvdSlope3m: round(cvdSlope3m, 8),
+    cvdSlope5m: round(cvdSlope5m, 8),
+    cvdAcceleration: round(cvdAcceleration, 8),
+    cvdAccelerationBias,
     cvdBias,
     orderFlowBias,
     sourceAt: newestAt,
@@ -163,6 +177,27 @@ function depthImbalance(rows, topN) {
 function parseOrderBook(result, nowMs = Date.now()) {
   const bids = result?.b ?? result?.bids ?? [];
   const asks = result?.a ?? result?.asks ?? [];
+  const bestBid = numeric(bids?.[0]?.[0]);
+  const bestAsk = numeric(asks?.[0]?.[0]);
+  const bestBidSize = numeric(bids?.[0]?.[1]);
+  const bestAskSize = numeric(asks?.[0]?.[1]);
+  const midPrice = Number.isFinite(bestBid) && Number.isFinite(bestAsk)
+    ? (bestBid + bestAsk) / 2
+    : null;
+  const spreadBps = Number.isFinite(midPrice) && midPrice > 0
+    ? ((bestAsk - bestBid) / midPrice) * 10_000
+    : null;
+  const bestDepth = (bestBidSize ?? 0) + (bestAskSize ?? 0);
+  const microprice = Number.isFinite(bestBid) && Number.isFinite(bestAsk) && bestDepth > 0
+    ? ((bestAsk * (bestBidSize ?? 0)) + (bestBid * (bestAskSize ?? 0))) / bestDepth
+    : null;
+  const micropriceEdgeBps = Number.isFinite(microprice) && Number.isFinite(midPrice) && midPrice > 0
+    ? ((microprice - midPrice) / midPrice) * 10_000
+    : null;
+  const bidDepthTop10 = depthImbalance(bids, 10);
+  const askDepthTop10 = depthImbalance(asks, 10);
+  const bidDepthTop20 = depthImbalance(bids, 20);
+  const askDepthTop20 = depthImbalance(asks, 20);
   const score = topN => {
     const bidDepth = depthImbalance(bids, topN);
     const askDepth = depthImbalance(asks, topN);
@@ -174,6 +209,17 @@ function parseOrderBook(result, nowMs = Date.now()) {
   const sourceAt = numeric(result?.ts ?? result?.cts ?? result?.time);
   const obiScore = round(obiTop20, 4);
   return {
+    bestBid: round(bestBid, 12),
+    bestAsk: round(bestAsk, 12),
+    midPrice: round(midPrice, 12),
+    spreadBps: round(spreadBps, 4),
+    microprice: round(microprice, 12),
+    micropriceEdgeBps: round(micropriceEdgeBps, 4),
+    bidDepthTop10: round(bidDepthTop10, 8),
+    askDepthTop10: round(askDepthTop10, 8),
+    bidDepthTop20: round(bidDepthTop20, 8),
+    askDepthTop20: round(askDepthTop20, 8),
+    totalDepthTop20: round(bidDepthTop20 + askDepthTop20, 8),
     obiScore,
     obiTop10: round(obiTop10, 4),
     obiTop20,
@@ -192,7 +238,7 @@ async function fetchJsonWithTimeout(url, fetchImpl, timeoutMs = V45_FETCH_TIMEOU
   try {
     const response = await Promise.race([
       fetchImpl(url, {
-        headers: { Accept: "application/json", "User-Agent": "Bybit-OI-Radar/4.5" },
+        headers: { Accept: "application/json", "User-Agent": "Bybit-OI-Radar/4.6" },
       }),
       timeout,
     ]);
@@ -204,6 +250,73 @@ async function fetchJsonWithTimeout(url, fetchImpl, timeoutMs = V45_FETCH_TIMEOU
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+function pctChange(current, previous) {
+  return Number.isFinite(current) && Number.isFinite(previous) && previous !== 0
+    ? ((current / previous) - 1) * 100
+    : null;
+}
+
+function parseBenchmarkKlines(list) {
+  const rows = (Array.isArray(list) ? list : [])
+    .map(row => ({ at: numeric(row?.[0]), close: numeric(row?.[4]) }))
+    .filter(row => Number.isFinite(row.at) && Number.isFinite(row.close))
+    .sort((a, b) => a.at - b.at);
+  const last = rows.length - 1;
+  if (last < 1) return { status: "unavailable", sampleCount: rows.length };
+  const price5mPct = pctChange(rows[last].close, rows[last - 1]?.close);
+  const price15mPct = pctChange(rows[last].close, rows[last - 3]?.close);
+  const price1hPct = pctChange(rows[last].close, rows[last - 12]?.close);
+  return {
+    status: "ok",
+    price5mPct: round(price5mPct, 4),
+    price15mPct: round(price15mPct, 4),
+    price1hPct: round(price1hPct, 4),
+    sourceAt: rows[last].at,
+    sampleCount: rows.length,
+  };
+}
+
+async function fetchBenchmarks(fetchImpl = fetch) {
+  const symbols = ["BTCUSDT", "ETHUSDT"];
+  const results = await Promise.all(symbols.map(async symbol => {
+    try {
+      const params = new URLSearchParams({
+        category: "linear",
+        symbol,
+        interval: "5",
+        limit: "13",
+      });
+      const result = await fetchJsonWithTimeout(
+        `${BYBIT_BASE}/v5/market/kline?${params}`,
+        fetchImpl,
+      );
+      return [symbol, parseBenchmarkKlines(result?.list)];
+    } catch (error) {
+      return [symbol, { status: "unavailable", error: error.message }];
+    }
+  }));
+  return Object.fromEntries(results);
+}
+
+function relativeStrength(row, benchmarks = {}) {
+  const btc = benchmarks.BTCUSDT || {};
+  const eth = benchmarks.ETHUSDT || {};
+  const relative = (candidateValue, benchmarkValue) => {
+    const candidate = numeric(candidateValue);
+    const benchmark = numeric(benchmarkValue);
+    return Number.isFinite(candidate) && Number.isFinite(benchmark)
+      ? round(candidate - benchmark, 4)
+      : null;
+  };
+  return {
+    relBtc5m: relative(row.price5mPct, btc.price5mPct),
+    relBtc15m: relative(row.price15mPct, btc.price15mPct),
+    relBtc1h: relative(row.price1hPct, btc.price1hPct),
+    relEth15m: relative(row.price15mPct, eth.price15mPct),
+    benchmarkStatus: btc.status === "ok" || eth.status === "ok" ? "ok" : "unavailable",
+  };
 }
 
 async function fetchMicrostructure(symbol, fetchImpl = fetch, nowMs = Date.now()) {
@@ -823,6 +936,9 @@ function v45Confirmation(row, direction, entrySignal) {
   const book = row.v45Microstructure?.orderBook || {};
   const flowBias = flow.status === "ok" ? flow.orderFlowBias : "UNAVAILABLE";
   const cvdBias = flow.status === "ok" ? flow.cvdBias : "UNAVAILABLE";
+  const cvdAccelerationBias = flow.status === "ok"
+    ? flow.cvdAccelerationBias
+    : "UNAVAILABLE";
   const orderBookBias = book.status === "ok" ? book.orderBookBias : "UNAVAILABLE";
   const directionBias = direction === "LONG" ? "BULLISH" : "BEARISH";
   const oppositeBias = direction === "LONG" ? "BEARISH" : "BULLISH";
@@ -850,8 +966,32 @@ function v45Confirmation(row, direction, entrySignal) {
     (direction === "LONG" ? imbalance >= 0.12 : imbalance <= -0.12);
   const alignedBook = orderBookBias === directionBias;
   const opposingBook = orderBookBias === oppositeBias;
+  const micropriceEdgeBps = numeric(book.micropriceEdgeBps);
+  const spreadBps = numeric(book.spreadBps);
+  const micropriceBias = !Number.isFinite(micropriceEdgeBps) || Math.abs(micropriceEdgeBps) < 0.5
+    ? "NEUTRAL"
+    : micropriceEdgeBps > 0 ? "BULLISH" : "BEARISH";
+  const alignedMicroprice = micropriceBias === directionBias;
+  const opposingMicroprice = micropriceBias === oppositeBias;
+  const wideSpread = Number.isFinite(spreadBps) && spreadBps >= 10;
+  const veryWideSpread = Number.isFinite(spreadBps) && spreadBps >= 25;
+  const relBtc5m = numeric(row.relBtc5m);
+  const relBtc15m = numeric(row.relBtc15m);
+  const relBtc1h = numeric(row.relBtc1h);
+  const relEth15m = numeric(row.relEth15m);
+  const directionSign = direction === "LONG" ? 1 : -1;
+  const relativeSignals = [relBtc15m, relBtc1h, relEth15m]
+    .filter(Number.isFinite)
+    .map(value => value * directionSign);
+  const relativeStrengthAligned = relativeSignals.filter(value => value >= 0.2).length >= 2;
+  const relativeStrengthOpposes = relativeSignals.filter(value => value <= -0.2).length >= 2;
+  const accelerationAligned = cvdAccelerationBias === directionBias;
+  const accelerationOpposes = cvdAccelerationBias === oppositeBias;
   const oiRising = (oi15 ?? 0) > 0 && (oi30 ?? 0) > 0;
   const adverseOiFlowPrice = oiRising && opposingFlow && priceAgainst;
+  const aggressiveFlowAbsorption = alignedFlow && (priceAgainst || opposingMicroprice);
+  const opposingFlowAbsorption = opposingFlow &&
+    (strictPriceReclaim || (priceDirectional && alignedMicroprice));
 
   let priceConfirmScore = 20;
   if (strictPriceReclaim) priceConfirmScore += 45;
@@ -862,6 +1002,15 @@ function v45Confirmation(row, direction, entrySignal) {
   if (opposingFlow) priceConfirmScore -= 20;
   if (alignedBook) priceConfirmScore += 5;
   if (opposingBook) priceConfirmScore -= 5;
+  if (alignedMicroprice) priceConfirmScore += 4;
+  if (opposingMicroprice) priceConfirmScore -= 4;
+  if (wideSpread) priceConfirmScore -= veryWideSpread ? 15 : 7;
+  if (relativeStrengthAligned) priceConfirmScore += 5;
+  if (relativeStrengthOpposes) priceConfirmScore -= 7;
+  if (accelerationAligned) priceConfirmScore += 3;
+  if (accelerationOpposes) priceConfirmScore -= 3;
+  if (aggressiveFlowAbsorption) priceConfirmScore -= 8;
+  if (opposingFlowAbsorption) priceConfirmScore += 6;
   if (adverseOiFlowPrice) priceConfirmScore -= 25;
   priceConfirmScore = round(clamp(priceConfirmScore), 1);
 
@@ -870,6 +1019,15 @@ function v45Confirmation(row, direction, entrySignal) {
   if (opposingFlow) directionConfidence -= 20;
   if (alignedBook) directionConfidence += 5;
   if (opposingBook) directionConfidence -= 5;
+  if (alignedMicroprice) directionConfidence += 5;
+  if (opposingMicroprice) directionConfidence -= 5;
+  if (wideSpread) directionConfidence -= veryWideSpread ? 20 : 8;
+  if (relativeStrengthAligned) directionConfidence += 7;
+  if (relativeStrengthOpposes) directionConfidence -= 9;
+  if (accelerationAligned) directionConfidence += 4;
+  if (accelerationOpposes) directionConfidence -= 4;
+  if (aggressiveFlowAbsorption) directionConfidence -= 10;
+  if (opposingFlowAbsorption) directionConfidence += 8;
   if (row.directionalBias === directionBias) directionConfidence += 10;
   if (row.directionalBias === "NEUTRAL") directionConfidence -= 5;
   if (adverseOiFlowPrice) directionConfidence -= 20;
@@ -877,8 +1035,8 @@ function v45Confirmation(row, direction, entrySignal) {
 
   const behaviorConfirmed = strictPriceReclaim ||
     (strongAlignedFlow && !priceAgainst);
-  const confirmationInvalidated = orderFlowOpposes ||
-    (cvdOpposes && directionConfidence < 60);
+  const confirmationInvalidated = veryWideSpread || strongOpposingFlow ||
+    adverseOiFlowPrice || (cvdOpposes && directionConfidence < 60);
   const executable = ["EARLY_ENTRY", "BREAKOUT_ENTRY", "RETEST_ENTRY"].includes(entrySignal);
   const entryStage = executable && behaviorConfirmed &&
     !adverseOiFlowPrice && !confirmationInvalidated
@@ -895,6 +1053,10 @@ function v45Confirmation(row, direction, entrySignal) {
   if (!strictPriceReclaim) riskFlags.add("KEY_LEVEL_NOT_RECLAIMED");
   if (opposingFlow) riskFlags.add("ORDER_FLOW_OPPOSES_DIRECTION");
   if (adverseOiFlowPrice) riskFlags.add("OI_UP_CVD_AND_PRICE_AGAINST_DIRECTION");
+  if (opposingMicroprice) riskFlags.add("MICROPRICE_OPPOSES_DIRECTION");
+  if (wideSpread) riskFlags.add(veryWideSpread ? "VERY_WIDE_SPREAD" : "WIDE_SPREAD");
+  if (relativeStrengthOpposes) riskFlags.add("RELATIVE_STRENGTH_OPPOSES_DIRECTION");
+  if (aggressiveFlowAbsorption) riskFlags.add("AGGRESSIVE_FLOW_ABSORBED");
   if (flow.status !== "ok") riskFlags.add("ORDER_FLOW_UNAVAILABLE");
   if (book.status !== "ok") riskFlags.add("ORDER_BOOK_UNAVAILABLE");
   const v45RiskFlags = [...riskFlags];
@@ -904,6 +1066,7 @@ function v45Confirmation(row, direction, entrySignal) {
     v45EntryStage: entryStage,
     v45EntrySignal,
     v45Confirmation: entryStage === "CONFIRMED" ? "CONFIRMED" : "UNCONFIRMED",
+    v46Confirmation: entryStage === "CONFIRMED" ? "CONFIRMED" : "UNCONFIRMED",
     priceConfirmScore,
     strictPriceReclaim,
     takerBuyVolume: flow.status === "ok" ? flow.takerBuyVolume : null,
@@ -912,15 +1075,43 @@ function v45Confirmation(row, direction, entrySignal) {
     cvd1m: flow.status === "ok" ? flow.cvd1m : null,
     cvd3m: flow.status === "ok" ? flow.cvd3m : null,
     cvd5m: flow.status === "ok" ? flow.cvd5m : null,
+    cvdSlope1m: flow.status === "ok" ? flow.cvdSlope1m : null,
+    cvdSlope3m: flow.status === "ok" ? flow.cvdSlope3m : null,
+    cvdSlope5m: flow.status === "ok" ? flow.cvdSlope5m : null,
+    cvdAcceleration: flow.status === "ok" ? flow.cvdAcceleration : null,
+    cvdAccelerationBias,
     cvdBias,
     orderFlowBias: flowBias,
     obiScore: book.status === "ok" ? book.obiScore : null,
     obiTop10: book.status === "ok" ? book.obiTop10 : null,
     obiTop20: book.status === "ok" ? book.obiTop20 : null,
     orderBookBias,
+    bestBid: book.status === "ok" ? book.bestBid : null,
+    bestAsk: book.status === "ok" ? book.bestAsk : null,
+    midPrice: book.status === "ok" ? book.midPrice : null,
+    spreadBps: book.status === "ok" ? book.spreadBps : null,
+    microprice: book.status === "ok" ? book.microprice : null,
+    micropriceEdgeBps: book.status === "ok" ? book.micropriceEdgeBps : null,
+    micropriceBias,
+    bidDepthTop10: book.status === "ok" ? book.bidDepthTop10 : null,
+    askDepthTop10: book.status === "ok" ? book.askDepthTop10 : null,
+    bidDepthTop20: book.status === "ok" ? book.bidDepthTop20 : null,
+    askDepthTop20: book.status === "ok" ? book.askDepthTop20 : null,
+    totalDepthTop20: book.status === "ok" ? book.totalDepthTop20 : null,
+    relBtc5m,
+    relBtc15m,
+    relBtc1h,
+    relEth15m,
+    relativeStrengthAligned,
+    relativeStrengthOpposes,
+    aggressiveFlowAbsorption,
+    opposingFlowAbsorption,
+    wideSpread,
+    veryWideSpread,
     directionConfidence,
     invalidationReason: v45RiskFlags.length ? v45RiskFlags.join(";") : null,
     v45RiskFlags,
+    v46RiskFlags: v45RiskFlags,
     v45DataFreshness: {
       collectedAt: row.v45Microstructure?.collectedAt ?? null,
       orderFlowStatus: flow.status || "unavailable",
@@ -934,6 +1125,8 @@ function v45Confirmation(row, direction, entrySignal) {
     adverseOiFlowPrice,
     strongAlignedFlow,
     strongOpposingFlow,
+    behaviorConfirmed,
+    confirmationInvalidated,
   };
 }
 
@@ -1393,6 +1586,7 @@ function v45TargetSymbols(lists, maxSymbols = V45_MAX_MICROSTRUCTURE_SYMBOLS) {
 
 async function enrichMicrostructure(base, fetchImpl = fetch, nowMs = Date.now()) {
   const preliminary = buildCandidateLists(base);
+  const benchmarksPromise = fetchBenchmarks(fetchImpl);
   const configuredMax = typeof process !== "undefined"
     ? Number(process.env?.V45_MAX_MICROSTRUCTURE_SYMBOLS)
     : NaN;
@@ -1414,19 +1608,27 @@ async function enrichMicrostructure(base, fetchImpl = fetch, nowMs = Date.now())
     ));
     for (const result of results) bySymbol.set(result.symbol, result);
   }
+  const benchmarks = await benchmarksPromise;
 
   return {
     ...base,
-    executionStates: (base.executionStates || []).map(row => ({
-      ...row,
-      v45Microstructure: bySymbol.get(row.symbol),
-    })),
+    executionStates: (base.executionStates || []).map(row => {
+      const relative = relativeStrength(row, benchmarks);
+      return {
+        ...row,
+        ...relative,
+        v45Microstructure: bySymbol.get(row.symbol),
+      };
+    }),
+    v46Benchmarks: benchmarks,
     v45MicrostructureDiagnostics: {
       requestedSymbols: symbols.length,
       orderFlowAvailable: [...bySymbol.values()].filter(value => value.flow?.status === "ok").length,
       orderBookAvailable: [...bySymbol.values()].filter(value => value.orderBook?.status === "ok").length,
       maxSymbols,
       fetchConcurrency: V45_FETCH_CONCURRENCY,
+      btcBenchmarkStatus: benchmarks.BTCUSDT?.status || "unavailable",
+      ethBenchmarkStatus: benchmarks.ETHUSDT?.status || "unavailable",
     },
   };
 }
@@ -1465,7 +1667,7 @@ function v45AbSummary(lists) {
 export default async function handler(req, res) {
   try {
     const response = await fetch(BASE_SCAN_URL, {
-      headers: { Accept: "application/json", "User-Agent": "Bybit-OI-Radar/4.4" },
+      headers: { Accept: "application/json", "User-Agent": "Bybit-OI-Radar/4.6" },
     });
     const text = await response.text();
     if (!response.ok) throw new Error(`V4.1 upstream HTTP ${response.status}: ${text.slice(0, 160)}`);
@@ -1493,8 +1695,19 @@ export default async function handler(req, res) {
           behaviorNotClockBased: true,
           orderBookCanTriggerEntry: false,
         },
+        v46Microstructure: {
+          mode: "lightweight_confirmation_only",
+          preservesV44V45Fields: true,
+          canTriggerEntry: false,
+          cvdDynamics: ["cvdSlope1m", "cvdSlope3m", "cvdSlope5m", "cvdAcceleration"],
+          orderBook: ["microprice", "spreadBps", "top10Depth", "top20Depth"],
+          relativeStrength: ["relBtc5m", "relBtc15m", "relBtc1h", "relEth15m"],
+          confirmationCore: "strict keyLevel reclaim or strong aligned aggressive flow",
+          invalidation: "strong adverse flow or very wide spread",
+          liquidationFlow: "not implemented: stateless REST scans are unsuitable for a sub-minute liquidation stream",
+        },
       },
-      scoreMeaning: "V4.4 candidateQuality, timingScore, entrySignal and runner fields are preserved. V4.5 entryStage and v45RunnerPotential add behavior-based directional confirmation without waiting a fixed number of candles.",
+      scoreMeaning: "V4.4 candidateQuality, timingScore, entrySignal and runner fields are preserved. V4.5 entryStage semantics remain behavior-based; V4.6 adds lightweight CVD dynamics, microprice, spread, relative-strength and absorption adjustments that cannot trigger Entry alone.",
       ...lists,
       v45AbSummary: v45AbSummary(lists),
     });
@@ -1510,6 +1723,9 @@ export {
   classifyV45Runner,
   parseRecentTrades,
   parseOrderBook,
+  parseBenchmarkKlines,
+  fetchBenchmarks,
+  relativeStrength,
   v45Confirmation,
   evaluateCandidate,
   buildCandidateLists,

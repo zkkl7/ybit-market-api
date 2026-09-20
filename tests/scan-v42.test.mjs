@@ -16,13 +16,17 @@ function load() {
   const transformed = source
     .replace('export default async function handler', 'async function handler')
     .replace(/export \{[\s\S]*?\};\s*$/, '') +
-    '\nglobalThis.api = { marketClassification, crossExchangeSummary, classifyRunner, classifyV45Runner, parseRecentTrades, parseOrderBook, v45Confirmation, evaluateCandidate, buildCandidateLists, fetchMicrostructure, enrichMicrostructure, v45AbSummary };';
+    '\nglobalThis.api = { VERSION, marketClassification, crossExchangeSummary, classifyRunner, classifyV45Runner, parseRecentTrades, parseOrderBook, parseBenchmarkKlines, fetchBenchmarks, relativeStrength, v45Confirmation, evaluateCandidate, buildCandidateLists, fetchMicrostructure, enrichMicrostructure, v45AbSummary };';
   vm.runInContext(transformed, context);
   return context.api;
 }
 const api = load();
 
 const executable = new Set(['EARLY_ENTRY', 'BREAKOUT_ENTRY', 'RETEST_ENTRY']);
+
+test('reports the V4.6 version', () => {
+  assert.equal(api.VERSION, 'OI-RADAR-V4.6');
+});
 
 const base = {
   symbol: 'TESTUSDT', price: 1,
@@ -492,6 +496,11 @@ test('trade and top-10/top-20 order book parsers expose stable confirmation fiel
   assert.equal(trades.cvd1m, 4);
   assert.equal(trades.cvd3m, 6);
   assert.equal(trades.cvd5m, 5);
+  assert.equal(trades.cvdSlope1m, 4);
+  assert.equal(trades.cvdSlope3m, 2);
+  assert.equal(trades.cvdSlope5m, 1);
+  assert.equal(trades.cvdAcceleration, 3);
+  assert.equal(trades.cvdAccelerationBias, 'BULLISH');
   assert.equal(trades.orderFlowBias, 'BULLISH');
 
   const book = api.parseOrderBook({
@@ -503,6 +512,112 @@ test('trade and top-10/top-20 order book parsers expose stable confirmation fiel
   assert.equal(book.orderBookBias, 'BULLISH');
   assert.equal(book.depthLevels, 20);
   assert.equal(book.ageMs, 50);
+});
+
+test('order book parser exposes microprice, spread and top-10/top-20 depth', () => {
+  const book = api.parseOrderBook({
+    ts: 1_000_000,
+    b: Array.from({ length: 20 }, (_, i) => [String(1 - i / 10_000), '2']),
+    a: Array.from({ length: 20 }, (_, i) => [String(1.001 + i / 10_000), '1']),
+  }, 1_000_000);
+  assert.equal(book.bestBid, 1);
+  assert.equal(book.bestAsk, 1.001);
+  assert.equal(book.midPrice, 1.0005);
+  assert.ok(book.microprice > book.midPrice);
+  assert.ok(book.micropriceEdgeBps > 0);
+  assert.ok(book.spreadBps > 9 && book.spreadBps < 11);
+  assert.equal(book.bidDepthTop10, 20);
+  assert.equal(book.askDepthTop10, 10);
+  assert.equal(book.bidDepthTop20, 40);
+  assert.equal(book.askDepthTop20, 20);
+  assert.equal(book.totalDepthTop20, 60);
+});
+
+test('benchmark klines produce candidate relative-strength fields', () => {
+  const start = 1_000_000;
+  const rows = Array.from({ length: 13 }, (_, i) => [
+    String(start + i * 300_000), '0', '0', '0', String(100 + i), '0', '0',
+  ]).reverse();
+  const btc = api.parseBenchmarkKlines(rows);
+  const relative = api.relativeStrength(
+    { price5mPct: 2, price15mPct: 4, price1hPct: 15 },
+    { BTCUSDT: btc, ETHUSDT: { status: 'ok', price15mPct: 1.5 } },
+  );
+  assert.equal(btc.status, 'ok');
+  assert.ok(relative.relBtc5m > 1);
+  assert.ok(relative.relBtc15m > 1);
+  assert.ok(relative.relBtc1h > 2);
+  assert.equal(relative.relEth15m, 2.5);
+});
+
+test('aligned microprice raises confidence while opposing microprice lowers it', () => {
+  const make = edge => api.evaluateCandidate({
+    ...base,
+    price: 1.01,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: true },
+    v45Microstructure: {
+      collectedAt: 1_000_000,
+      flow: { status: 'unavailable' },
+      orderBook: {
+        status: 'ok', obiScore: 0, obiTop10: 0, obiTop20: 0,
+        orderBookBias: 'NEUTRAL', micropriceEdgeBps: edge, spreadBps: 2,
+      },
+    },
+  }, 'LONG');
+  const aligned = make(1);
+  const opposing = make(-1);
+  assert.equal(aligned.micropriceBias, 'BULLISH');
+  assert.equal(opposing.micropriceBias, 'BEARISH');
+  assert.ok(aligned.directionConfidence > opposing.directionConfidence);
+  assert.equal(aligned.entrySignal, opposing.entrySignal);
+});
+
+test('very wide spread can invalidate an otherwise reclaimed confirmation', () => {
+  const out = api.evaluateCandidate({
+    ...base,
+    price: 1.01,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: true },
+    v45Microstructure: {
+      ...bullishMicrostructure,
+      orderBook: { ...bullishMicrostructure.orderBook, spreadBps: 30, micropriceEdgeBps: 1 },
+    },
+  }, 'LONG');
+  assert.equal(out.strictPriceReclaim, true);
+  assert.equal(out.veryWideSpread, true);
+  assert.equal(out.entryStage, 'PROBE');
+  assert.ok(out.v45RiskFlags.includes('VERY_WIDE_SPREAD'));
+});
+
+test('relative strength and absorption only adjust confirmation confidence', () => {
+  const common = {
+    ...base,
+    price: 0.997,
+    price5mPct: -0.2,
+    price15mPct: -0.4,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: false },
+    v45Microstructure: bullishMicrostructure,
+  };
+  const aligned = api.evaluateCandidate({
+    ...common, relBtc15m: 0.5, relBtc1h: 0.8, relEth15m: 0.4,
+  }, 'LONG');
+  const opposing = api.evaluateCandidate({
+    ...common, relBtc15m: -0.5, relBtc1h: -0.8, relEth15m: -0.4,
+  }, 'LONG');
+  assert.equal(aligned.entrySignal, opposing.entrySignal);
+  assert.equal(aligned.aggressiveFlowAbsorption, true);
+  assert.ok(aligned.v45RiskFlags.includes('AGGRESSIVE_FLOW_ABSORBED'));
+  assert.equal(aligned.relativeStrengthAligned, true);
+  assert.equal(opposing.relativeStrengthOpposes, true);
+  assert.ok(aligned.directionConfidence > opposing.directionConfidence);
+
+  const absorbedOpposition = api.evaluateCandidate({
+    ...base,
+    price: 1.01,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: true },
+    v45Microstructure: bearishMicrostructure,
+  }, 'LONG');
+  assert.equal(absorbedOpposition.opposingFlowAbsorption, true);
+  assert.equal(absorbedOpposition.entryStage, 'PROBE');
 });
 
 test('microstructure request failure is marked unavailable and preserves V4.4 entries', async () => {
