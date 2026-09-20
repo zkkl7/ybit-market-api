@@ -39,8 +39,11 @@ test('history persists timing fields without changing entry ranking or requiring
     assert.equal(saved.entryStage, 'PROBE');
     assert.equal(saved.v45EntrySignal, 'EARLY_PROBE');
     assert.equal(saved.cvdBias, 'BEARISH');
-    assert.equal(saved.v45RunnerPotential, 'MEDIUM');
+    assert.equal(saved.v45RunnerPotential,
+      latest.radar.longCandidatePool[0].v45RunnerPotential);
     assert.equal(latest.radar.longEntryCandidates[0].v45EntrySignal, 'EARLY_PROBE');
+    assert.equal(latest.radar.longEntryCandidates[0].v45RunnerPotential,
+      latest.radar.longCandidatePool[0].v45RunnerPotential);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

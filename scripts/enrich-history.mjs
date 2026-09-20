@@ -123,6 +123,28 @@ function classifyRunner(candidate) {
   };
 }
 
+function classifyV45Runner(candidate, legacyRunner) {
+  let v45RunnerPotential = legacyRunner.runnerPotential;
+  const reasons = [];
+  const neutralPositionBuild = candidate.sourceExecutionState === "POSITION_BUILD" &&
+    candidate.sourceDirectionalBias === "NEUTRAL";
+  const directionalConfirmation = candidate.strictPriceReclaim || candidate.strongAlignedFlow;
+
+  if (candidate.adverseOiFlowPrice) {
+    v45RunnerPotential = "LOW";
+    reasons.push("OI_UP_CVD_AND_PRICE_AGAINST_DIRECTION");
+  } else if (candidate.entryStage !== "CONFIRMED" && v45RunnerPotential === "HIGH") {
+    v45RunnerPotential = "MEDIUM";
+    reasons.push("ENTRY_STAGE_PROBE");
+  }
+  if (neutralPositionBuild && !directionalConfirmation && v45RunnerPotential === "HIGH") {
+    v45RunnerPotential = "MEDIUM";
+    reasons.push("POSITION_BUILD_NEUTRAL_UNCONFIRMED");
+  }
+
+  return { v45RunnerPotential, v45RunnerReasons: reasons };
+}
+
 function readJson(file, fallback) {
   try {
     return JSON.parse(fs.readFileSync(file, "utf8"));
@@ -380,9 +402,13 @@ function enrichPool(pool, snapshots, includeRunner = false) {
         ...candidate,
         ...calculateHistory(candidate, snapshots),
       };
-      return includeRunner
-        ? { ...enriched, ...classifyRunner(enriched) }
-        : enriched;
+      if (!includeRunner) return enriched;
+      const legacyRunner = classifyRunner(enriched);
+      return {
+        ...enriched,
+        ...legacyRunner,
+        ...classifyV45Runner(enriched, legacyRunner),
+      };
     })
     .sort(
       (a, b) =>
@@ -531,6 +557,30 @@ radar.tradFiLongCandidates =
 
 radar.tradFiShortCandidates =
   enrichedTradFiShort.slice(0, 3);
+
+const v45Pools = [...enrichedLong, ...enrichedShort];
+const executableSignals = new Set(["EARLY_ENTRY", "BREAKOUT_ENTRY", "RETEST_ENTRY"]);
+const compactV45Ab = candidate => ({
+  symbol: candidate.symbol,
+  direction: candidate.direction,
+  oldEntrySignal: candidate.entrySignal,
+  oldRunnerPotential: candidate.runnerPotential ?? null,
+  v45EntryStage: candidate.v45EntryStage,
+  v45RunnerPotential: candidate.v45RunnerPotential ?? null,
+  directionConfidence: candidate.directionConfidence,
+  invalidationReason: candidate.invalidationReason,
+});
+radar.v45AbSummary = {
+  oldEntryCount: v45Pools.filter(candidate => executableSignals.has(candidate.entrySignal)).length,
+  confirmedCount: v45Pools.filter(candidate => candidate.entryStage === "CONFIRMED").length,
+  probeCount: v45Pools.filter(candidate => candidate.entryStage === "PROBE").length,
+  oldEntriesNowProbe: v45Pools.filter(candidate =>
+    executableSignals.has(candidate.entrySignal) && candidate.entryStage === "PROBE"
+  ).map(compactV45Ab),
+  oldHighNowDowngraded: v45Pools.filter(candidate =>
+    candidate.runnerPotential === "HIGH" && candidate.v45RunnerPotential !== "HIGH"
+  ).map(compactV45Ab),
+};
 
 radar.historyRanking = {
   version: "V4.3-HISTORY-1",
