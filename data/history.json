@@ -1,12 +1,7 @@
 {
   "version": "RADAR-HISTORY-V1",
-  "updatedAt": "2026-09-20T12:16:33.889Z",
+  "updatedAt": "2026-09-20T12:44:03.531Z",
   "snapshots": [
-    {
-      "fetchedAt": "2026-09-20T10:54:14Z",
-      "scannedAt": "2026-09-20T10:54:13.552Z",
-      "candidates": []
-    },
     {
       "fetchedAt": "2026-09-20T11:12:30Z",
       "scannedAt": "2026-09-20T11:12:29.461Z",
@@ -1650,6 +1645,125 @@
           "oi30mPct": 0.78,
           "oi1hPct": 0.82,
           "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        }
+      ]
+    },
+    {
+      "fetchedAt": "2026-09-20T12:43:58Z",
+      "scannedAt": "2026-09-20T12:43:58.005Z",
+      "candidates": [
+        {
+          "symbol": "ZAMAUSDT",
+          "direction": "LONG",
+          "candidateState": "ENTRY_NOW",
+          "candidateQuality": 92,
+          "finalCandidateScore": 84.4,
+          "entrySignal": "ARMED",
+          "timingScore": 88,
+          "timingRiskFlags": [
+            "PRICE_15M_WARM",
+            "5M_SPIKE",
+            "24H_WARM"
+          ],
+          "entryStage": "PROBE",
+          "v45EntrySignal": "ARMED",
+          "priceConfirmScore": 70,
+          "cvdBias": "BEARISH",
+          "orderFlowBias": "BEARISH",
+          "obiScore": -0.5088,
+          "directionConfidence": 40,
+          "invalidationReason": "ORDER_FLOW_OPPOSES_DIRECTION",
+          "v45RunnerPotential": "LOW",
+          "v45DataFreshness": {
+            "collectedAt": 1789908238057,
+            "orderFlowStatus": "ok",
+            "orderFlowSourceAt": 1789908238090,
+            "orderFlowSampleCount": 1000,
+            "orderBookStatus": "ok",
+            "orderBookSourceAt": 1789908238035,
+            "orderBookAgeMs": 22,
+            "orderBookDepthLevels": 20
+          },
+          "price": 0.09206,
+          "oi15mPct": 1.17,
+          "oi30mPct": 1.55,
+          "oi1hPct": 1.89,
+          "crossConfirmation": "CONFIRMED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "ZILUSDT",
+          "direction": "SHORT",
+          "candidateState": "PRE_ENTRY",
+          "candidateQuality": 66.7,
+          "finalCandidateScore": 63.8,
+          "entrySignal": "NO_CHASE",
+          "timingScore": 88,
+          "timingRiskFlags": [
+            "EXTREME_SHORT_FUNDING"
+          ],
+          "entryStage": "PROBE",
+          "v45EntrySignal": "NO_CHASE",
+          "priceConfirmScore": 85,
+          "cvdBias": "BEARISH",
+          "orderFlowBias": "NEUTRAL",
+          "obiScore": -0.0648,
+          "directionConfidence": 95,
+          "invalidationReason": null,
+          "v45RunnerPotential": "LOW",
+          "v45DataFreshness": {
+            "collectedAt": 1789908238057,
+            "orderFlowStatus": "ok",
+            "orderFlowSourceAt": 1789908237669,
+            "orderFlowSampleCount": 1000,
+            "orderBookStatus": "ok",
+            "orderBookSourceAt": 1789908238040,
+            "orderBookAgeMs": 17,
+            "orderBookDepthLevels": 20
+          },
+          "price": 0.003549,
+          "oi15mPct": 0.5,
+          "oi30mPct": 0.82,
+          "oi1hPct": 0.27,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "NIULAIUSDT",
+          "direction": "SHORT",
+          "candidateState": "PRE_ENTRY",
+          "candidateQuality": 53.7,
+          "finalCandidateScore": 53.1,
+          "entrySignal": "RETEST_ENTRY",
+          "timingScore": 90,
+          "timingRiskFlags": [
+            "SETUP_WEAK"
+          ],
+          "entryStage": "PROBE",
+          "v45EntrySignal": "RETEST_PROBE",
+          "priceConfirmScore": 60,
+          "cvdBias": "BULLISH",
+          "orderFlowBias": "BULLISH",
+          "obiScore": 0.2654,
+          "directionConfidence": 45,
+          "invalidationReason": "ORDER_FLOW_OPPOSES_DIRECTION",
+          "v45RunnerPotential": "LOW",
+          "v45DataFreshness": {
+            "collectedAt": 1789908238057,
+            "orderFlowStatus": "ok",
+            "orderFlowSourceAt": 1789908237639,
+            "orderFlowSampleCount": 97,
+            "orderBookStatus": "ok",
+            "orderBookSourceAt": 1789908238013,
+            "orderBookAgeMs": 44,
+            "orderBookDepthLevels": 20
+          },
+          "price": 0.10027,
+          "oi15mPct": 2.4,
+          "oi30mPct": 2.74,
+          "oi1hPct": 2.8,
+          "crossConfirmation": "MIXED",
           "marketType": "CRYPTO_PERP"
         }
       ]
