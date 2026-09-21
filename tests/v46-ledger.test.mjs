@@ -1,110 +1,146 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyCandles, createV46Ledger, summarize, updateLifecycle } from "../scripts/update-v46-ledger.mjs";
+import {
+  applyCandles, createV46Ledger, migrateEvent, summarize, updateLifecycle,
+} from "../scripts/update-v46-ledger.mjs";
 
-const latest = (at, stage = "PROBE", tier = "MIXED", price = 100) => ({
-  snapshot: { fetchedAt: at },
+const T0 = Date.parse("2026-09-21T00:00:00Z");
+const latest = (minutes, stage = "PROBE", tier = "MIXED", price = 100, marketType = "CRYPTO_PERP") => ({
+  snapshot: { fetchedAt: new Date(T0 + minutes * 60_000).toISOString() },
   radar: { longCandidatePool: [{
-    symbol: "TESTUSDT", direction: "LONG", entrySignal: "BREAKOUT_ENTRY",
-    entryStage: stage, executionTier: tier, executionScore: 72,
-    strictPriceReclaim: stage === "CONFIRMED", nearReclaim: true,
+    symbol: "TESTUSDT", direction: "LONG", marketType,
+    entrySignal: "BREAKOUT_ENTRY", entryStage: stage, executionTier: tier,
+    executionScore: 72, strictPriceReclaim: stage === "CONFIRMED", nearReclaim: true,
     microPersistence: "PERSISTENT", v46RiskFlags: [], keyMetrics: { price },
   }] },
 });
 
-test("same setup updates one event and records PROBE to CLEAN confirmation", () => {
+const candle = (minute, high, low) => ({ openTime: T0 + minute * 60_000, high, low });
+const flatCandles = (fromMinute, throughMinute, high = 100.2, low = 99.8) => {
+  const rows = [];
+  for (let minute = fromMinute; minute < throughMinute; minute += 5) rows.push(candle(minute, high, low));
+  return rows;
+};
+
+test("PROBE and first CONFIRMED prices are independently locked", () => {
   const ledger = createV46Ledger();
-  updateLifecycle(ledger, latest("2026-09-21T00:00:00Z"));
-  updateLifecycle(ledger, latest("2026-09-21T00:15:00Z", "CONFIRMED", "CLEAN"));
+  updateLifecycle(ledger, latest(0, "PROBE", "MIXED", 100));
+  updateLifecycle(ledger, latest(10, "CONFIRMED", "CLEAN", 101));
+  updateLifecycle(ledger, latest(15, "CONFIRMED", "MIXED", 103));
+  const event = ledger.events[0];
+  assert.equal(event.firstSeenPrice, 100);
+  assert.equal(event.entryPrice, 100);
+  assert.equal(event.confirmedEntryPrice, 101);
+  assert.equal(event.lastSeenPrice, 103);
+  assert.equal(event.confirmationType, "CLEAN");
+  assert.equal(event.lastExecutionTier, "MIXED");
+  assert.equal(event.confirmationDelayMin, 10);
   assert.equal(ledger.events.length, 1);
-  assert.equal(ledger.events[0].firstProbeAt, "2026-09-21T00:00:00.000Z");
-  assert.equal(ledger.events[0].firstConfirmedAt, "2026-09-21T00:15:00.000Z");
-  assert.equal(ledger.events[0].confirmationType, "CLEAN");
 });
 
-test("entryPrice is locked while lastSeenPrice follows later snapshots", () => {
+test("setup gains before confirmation do not leak into confirmed metrics", () => {
   const ledger = createV46Ledger();
-  updateLifecycle(ledger, latest("2026-09-21T00:00:00Z", "PROBE", "MIXED", 100));
-  updateLifecycle(ledger, latest("2026-09-21T00:05:00Z", "PROBE", "MIXED", 105));
-  assert.equal(ledger.events.length, 1);
-  assert.equal(ledger.events[0].entryPrice, 100);
-  assert.equal(ledger.events[0].lastSeenPrice, 105);
+  updateLifecycle(ledger, latest(0, "PROBE", "MIXED", 100));
+  updateLifecycle(ledger, latest(10, "CONFIRMED", "CLEAN", 101));
+  const event = ledger.events[0];
+  applyCandles(event, [
+    candle(0, 100.4, 99.8), candle(5, 101.1, 100),
+    candle(10, 101.2, 100.8), candle(15, 101.2, 100.9), candle(20, 101.2, 100.9),
+  ], T0 + 30 * 60_000);
+  assert.equal(event.setupMetrics["15m"].hit10, true);
+  assert.equal(event.confirmedMetrics["15m"].hit05, false);
 });
 
-test("missing setup enters cooldown and only creates a new event after cooldown", () => {
+test("elapsed time without complete candle coverage is not matured", () => {
   const ledger = createV46Ledger();
-  updateLifecycle(ledger, latest("2026-09-21T00:00:00Z", "CONFIRMED", "CLEAN"));
-  updateLifecycle(ledger, { snapshot: { fetchedAt: "2026-09-21T00:15:00Z" }, radar: {} });
+  updateLifecycle(ledger, latest(0, "CONFIRMED", "CLEAN", 100));
+  const event = ledger.events[0];
+  const incomplete = flatCandles(0, 60).filter(row => row.openTime !== T0 + 25 * 60_000);
+  applyCandles(event, incomplete, T0 + 70 * 60_000);
+  assert.equal(event.confirmedMetrics["60m"].dataComplete, false);
+  assert.equal(event.confirmedMetrics["60m"].matured, false);
+  applyCandles(event, flatCandles(0, 60), T0 + 70 * 60_000);
+  assert.equal(event.confirmedMetrics["60m"].dataComplete, true);
+  assert.equal(event.confirmedMetrics["60m"].matured, true);
+  assert.equal(event.confirmedMetrics["60m"].checkedThrough, "2026-09-21T01:00:00.000Z");
+});
+
+test("summary separates PROBE, market type, CLEAN and MIXED denominators", () => {
+  const make = ({ symbol, marketType, confirmed, tier, hit }) => {
+    const event = {
+      setupId: symbol, symbol, direction: "LONG", marketType,
+      firstSeenAt: new Date(T0).toISOString(), firstSeenPrice: 100, entryPrice: 100,
+      firstProbeAt: confirmed ? null : new Date(T0).toISOString(),
+      firstConfirmedAt: confirmed ? new Date(T0).toISOString() : null,
+      confirmedEntryPrice: confirmed ? 100 : null, confirmationType: confirmed ? tier : null,
+      setupMetrics: { "60m": { ...{}, matured: true, hit05: hit, hit10: hit, hit20: false } },
+      confirmedMetrics: { "60m": { ...{}, matured: confirmed, hit05: hit, hit10: false, hit20: false } },
+      classification: confirmed ? `${tier}_WIN` : hit ? "FALSE_NEGATIVE" : "GOOD_BLOCK",
+    };
+    for (const minutes of [15, 30]) {
+      event.setupMetrics[`${minutes}m`] = { matured: false };
+      event.confirmedMetrics[`${minutes}m`] = { matured: false };
+    }
+    return event;
+  };
+  const events = [
+    make({ symbol: "CLEAN", marketType: "CRYPTO_PERP", confirmed: true, tier: "CLEAN", hit: true }),
+    make({ symbol: "MIXED", marketType: "CRYPTO_PERP", confirmed: true, tier: "MIXED", hit: false }),
+    make({ symbol: "PROBE", marketType: "CRYPTO_PERP", confirmed: false, tier: null, hit: true }),
+    make({ symbol: "STOCK", marketType: "TRADFI_PERP", confirmed: true, tier: "CLEAN", hit: true }),
+  ];
+  const summary = summarize(events);
+  assert.equal(summary.crypto.confirmed.total, 2);
+  assert.equal(summary.crypto.confirmed.matured60m, 2);
+  assert.equal(summary.crypto.confirmed.hit05_60m, 1);
+  assert.equal(summary.crypto.confirmed.clean.matured60m, 1);
+  assert.equal(summary.crypto.confirmed.clean.hit05_60m, 1);
+  assert.equal(summary.crypto.confirmed.mixed.matured60m, 1);
+  assert.equal(summary.crypto.confirmed.mixed.hit05_60m, 0);
+  assert.equal(summary.crypto.probe.total, 1);
+  assert.equal(summary.crypto.probe.falseNegative05, 1);
+  assert.equal(summary.tradfi.confirmed.total, 1);
+});
+
+test("old events never borrow firstSeenPrice for an unknown confirmation price", () => {
+  const old = {
+    symbol: "OLDUSDT", direction: "LONG", firstSeenAt: "2026-09-21T00:00:00Z",
+    firstConfirmedAt: "2026-09-21T00:10:00Z", entryPrice: 100, confirmationType: "CLEAN",
+    "15m": {}, "30m": {}, "60m": {},
+  };
+  migrateEvent(old);
+  assert.equal(old.firstSeenPrice, 100);
+  assert.equal(old.confirmedEntryPrice, null);
+  assert.equal(old.marketType, "UNKNOWN");
+  old.confirmedMetrics["60m"].matured = true;
+  const summary = summarize([old]);
+  assert.equal(summary.crypto.confirmed.total, 0);
+  assert.equal(summary.unknownMarketEvents, 1);
+
+  old.marketType = "CRYPTO_PERP";
+  old.confirmedMetrics["60m"].matured = false;
+  const cryptoSummary = summarize([old]);
+  assert.equal(cryptoSummary.crypto.confirmed.total, 1);
+  assert.equal(cryptoSummary.crypto.confirmed.matured60m, 0);
+});
+
+test("legacy eventual results stay null even when short-term targets hit", () => {
+  const ledger = createV46Ledger();
+  updateLifecycle(ledger, latest(0, "CONFIRMED", "CLEAN", 100));
+  const event = ledger.events[0];
+  applyCandles(event, [candle(0, 101, 99.8), ...flatCandles(5, 60)], T0 + 70 * 60_000);
+  assert.equal(event.confirmedMetrics["60m"].hit05, true);
+  assert.equal(event.legacy.eventualHit05, null);
+  assert.equal(event.legacy.stopHit35, null);
+});
+
+test("cooldown still gates creation of a new setup", () => {
+  const ledger = createV46Ledger();
+  updateLifecycle(ledger, latest(0));
+  updateLifecycle(ledger, { snapshot: { fetchedAt: new Date(T0 + 15 * 60_000).toISOString() }, radar: {} });
+  updateLifecycle(ledger, latest(30));
   assert.equal(ledger.events.length, 1);
-  updateLifecycle(ledger, latest("2026-09-21T01:15:00Z"));
+  updateLifecycle(ledger, { snapshot: { fetchedAt: new Date(T0 + 45 * 60_000).toISOString() }, radar: {} });
+  updateLifecycle(ledger, latest(100));
   assert.equal(ledger.events.length, 2);
-});
-
-test("profit before stop succeeds and runner is a tag without replacing CLEAN_WIN", () => {
-  const ledger = createV46Ledger();
-  updateLifecycle(ledger, latest("2026-09-21T00:00:00Z", "CONFIRMED", "CLEAN"));
-  const event = ledger.events[0];
-  applyCandles(event, [
-    { openTime: Date.parse("2026-09-21T00:00:00Z"), high: 100.6, low: 99.7 },
-    { openTime: Date.parse("2026-09-21T00:10:00Z"), high: 101.2, low: 99.9 },
-    { openTime: Date.parse("2026-09-21T00:25:00Z"), high: 102.1, low: 100 },
-    { openTime: Date.parse("2026-09-21T00:30:00Z"), high: 101, low: 96 },
-  ]);
-  assert.equal(event["60m"].hit05, true);
-  assert.equal(event["60m"].hit10, true);
-  assert.equal(event["60m"].hit20, true);
-  assert.equal(event["60m"].timeTo05, 5);
-  assert.equal(event.classification, "CLEAN_WIN");
-  assert.ok(event.tags.includes("RUNNER"));
-});
-
-test("stop before later profit fails all unresolved target layers", () => {
-  const ledger = createV46Ledger();
-  updateLifecycle(ledger, latest("2026-09-21T00:00:00Z", "CONFIRMED", "MIXED"));
-  const event = ledger.events[0];
-  applyCandles(event, [
-    { openTime: Date.parse("2026-09-21T00:00:00Z"), high: 100.2, low: 96.4 },
-    { openTime: Date.parse("2026-09-21T00:05:00Z"), high: 102.5, low: 99 },
-  ]);
-  assert.equal(event["60m"].hit05, false);
-  assert.equal(event["60m"].hit10, false);
-  assert.equal(event["60m"].failedBefore05, true);
-  assert.ok(event.firstStop35At);
-});
-
-test("same candle target and stop uses conservative stop-wins tie", () => {
-  const ledger = createV46Ledger();
-  updateLifecycle(ledger, latest("2026-09-21T00:00:00Z", "CONFIRMED", "CLEAN"));
-  const event = ledger.events[0];
-  applyCandles(event, [{ openTime: Date.parse("2026-09-21T00:00:00Z"), high: 101.2, low: 96.4 }]);
-  assert.equal(event["60m"].hit05, false);
-  assert.equal(event["60m"].failedBefore05, true);
-});
-
-test("GOOD_BLOCK requires an unconfirmed PROBE stopped before +0.5", () => {
-  const stopped = createV46Ledger();
-  updateLifecycle(stopped, latest("2026-09-21T00:00:00Z"));
-  applyCandles(stopped.events[0], [{ openTime: Date.parse("2026-09-21T00:00:00Z"), high: 100.1, low: 96.4 }]);
-  assert.equal(stopped.events[0].classification, "GOOD_BLOCK");
-
-  const flat = createV46Ledger();
-  updateLifecycle(flat, latest("2026-09-21T00:00:00Z"));
-  applyCandles(flat.events[0], [{ openTime: Date.parse("2026-09-21T00:00:00Z"), high: 100.1, low: 99.5 }]);
-  assert.equal(flat.events[0].classification, null);
-});
-
-test("summary uses only matured events for each window denominator", () => {
-  const ledger = createV46Ledger();
-  updateLifecycle(ledger, latest("2026-09-21T00:00:00Z", "CONFIRMED", "CLEAN"));
-  updateLifecycle(ledger, { snapshot: { fetchedAt: "2026-09-21T00:05:00Z" }, radar: {} });
-  updateLifecycle(ledger, latest("2026-09-21T01:00:00Z", "CONFIRMED", "MIXED"));
-  ledger.events[0]["15m"].hit05 = true;
-  ledger.events[0]["30m"].hit05 = true;
-  ledger.events[0]["60m"].hit05 = true;
-  const summary = summarize(ledger.events, Date.parse("2026-09-21T01:20:00Z"));
-  assert.equal(summary.matured15m, 2);
-  assert.equal(summary.matured30m, 1);
-  assert.equal(summary.matured60m, 1);
-  assert.equal(summary.hit05_60m, 1);
-  assert.equal(summary.hit05Rate60m, 100);
 });

@@ -11,30 +11,42 @@ const WINDOWS = [15, 30, 60];
 const round = (n, d = 4) => Number.isFinite(n) ? Number(n.toFixed(d)) : null;
 const number = value => value == null || value === "" ? null : Number.isFinite(Number(value)) ? Number(value) : null;
 
+const rules = () => ({
+  lifecycleKey: "symbol+direction until invalidated and 45m cooldown",
+  setupAnchor: "firstSeenAt+firstSeenPrice",
+  confirmedAnchor: "firstConfirmedAt+confirmedEntryPrice",
+  entryPriceAlias: "firstSeenPrice",
+  focus: "15m/30m/60m underlying move",
+  thresholdsPct: [0.5, 1, 2],
+  windowMetricsBasis: "closed 5m candle high/low",
+  maturity: "elapsed time and contiguous closed-candle coverage through window end",
+  tiePolicy: "stop_wins",
+  anchorPricesLocked: true,
+  legacyResultsSource: "data/entry-backtest.json",
+});
+
+const emptyWindow = () => ({
+  checkedThrough: null, dataComplete: false, matured: false,
+  mfePct: null, maePct: null,
+  hit05: false, hit10: false, hit20: false,
+  failedBefore05: false, failedBefore10: false,
+  firstHit05At: null, firstHit10At: null, firstHit20At: null, firstStop35At: null,
+});
+
+const emptyMetrics = () => ({
+  "15m": emptyWindow(), "30m": emptyWindow(),
+  "60m": { ...emptyWindow(), timeTo05: null, timeTo10: null },
+});
+
 export function createV46Ledger() {
-  return {
-    version: "V46-EVENT-LEDGER-1",
-    updatedAt: null,
-    rules: {
-      lifecycleKey: "symbol+direction until invalidated and 45m cooldown",
-      focus: "15m/30m/60m underlying move",
-      thresholdsPct: [0.5, 1, 2],
-      legacyPreserved: true,
-      windowMetricsBasis: "5m candle high/low",
-      tiePolicy: "stop_wins",
-      entryPriceLocked: true,
-    },
-    summary: {},
-    events: [],
-  };
+  return { version: "V46-EVENT-LEDGER-2", updatedAt: null, rules: rules(), summary: {}, events: [] };
 }
 
 const allCandidates = latest => {
   const radar = latest?.radar ?? latest ?? {};
   const seen = new Map();
   for (const pool of POOLS) for (const candidate of radar[pool] ?? []) {
-    if (!candidate?.symbol || !candidate?.direction) continue;
-    seen.set(`${candidate.symbol}:${candidate.direction}`, candidate);
+    if (candidate?.symbol && candidate?.direction) seen.set(`${candidate.symbol}:${candidate.direction}`, candidate);
   }
   return [...seen.values()];
 };
@@ -43,9 +55,12 @@ const snapshotTime = latest => new Date(
   latest?.radar?.scannedAt ?? latest?.snapshot?.fetchedAt ?? latest?.scannedAt ?? Date.now()
 ).toISOString();
 
-const compactFeatures = candidate => ({
+const candidatePrice = candidate => number(candidate.keyMetrics?.price ?? candidate.price);
+const candidateFeatures = candidate => ({
   entrySignal: candidate.entrySignal ?? null,
-  lastSeenPrice: number(candidate.keyMetrics?.price ?? candidate.price),
+  lastSeenPrice: candidatePrice(candidate),
+  lastExecutionTier: candidate.executionTier ?? null,
+  marketType: candidate.marketType ?? "UNKNOWN",
   finalCandidateScore: number(candidate.finalCandidateScore ?? candidate.candidateQuality),
   executionScore: number(candidate.executionScore ?? candidate.directionConfidence),
   microPersistence: candidate.microPersistence ?? null,
@@ -58,69 +73,80 @@ const compactFeatures = candidate => ({
   crossConfirmation: candidate.crossExchangeSummary?.confirmation ?? candidate.crossConfirmation ?? null,
 });
 
-const emptyWindow = () => ({
-  matured: false, mfePct: null, maePct: null,
-  hit05: false, hit10: false, hit20: false,
-  failedBefore05: false, failedBefore10: false,
-  firstHit05At: null, firstHit10At: null, firstHit20At: null, firstStop35At: null,
-});
+const sameInstant = (a, b) => Number.isFinite(Date.parse(a)) && Date.parse(a) === Date.parse(b);
+
+export function migrateEvent(event, candidate = null) {
+  event.firstSeenPrice ??= number(event.entryPrice);
+  event.entryPrice = event.firstSeenPrice; // compatibility alias only
+  event.lastSeenPrice ??= event.firstSeenPrice;
+  event.marketType ??= candidate?.marketType ?? "UNKNOWN";
+  event.lastExecutionTier ??= candidate?.executionTier ?? event.confirmationType ?? null;
+  if (!("confirmedEntryPrice" in event)) {
+    event.confirmedEntryPrice = event.firstConfirmedAt && sameInstant(event.firstConfirmedAt, event.firstSeenAt)
+      ? event.firstSeenPrice : null;
+  }
+  event.confirmationDelayMin = event.firstConfirmedAt
+    ? round((Date.parse(event.firstConfirmedAt) - Date.parse(event.firstSeenAt)) / 60_000, 2) : null;
+  if (!event.setupMetrics) {
+    event.setupMetrics = {};
+    for (const minutes of WINDOWS) event.setupMetrics[`${minutes}m`] = event[`${minutes}m`] ?? emptyWindow();
+  }
+  event.confirmedMetrics ??= emptyMetrics();
+  for (const minutes of WINDOWS) delete event[`${minutes}m`];
+  event.legacy = { eventualHit05: null, stopHit35: null, source: "entry-backtest-ledger" };
+  event.tags ??= [];
+  return event;
+}
 
 export function updateLifecycle(ledger, latest) {
   if (!Array.isArray(ledger.events)) ledger.events = [];
   const at = snapshotTime(latest);
   const atMs = Date.parse(at);
-  const current = new Map(allCandidates(latest).map(candidate => [`${candidate.symbol}:${candidate.direction}`, candidate]));
-  const changed = [];
+  const candidates = allCandidates(latest);
+  const current = new Map(candidates.map(candidate => [`${candidate.symbol}:${candidate.direction}`, candidate]));
+  for (const event of ledger.events) migrateEvent(event, current.get(`${event.symbol}:${event.direction}`));
 
   for (const event of ledger.events.filter(row => row.lifecycleStatus === "ACTIVE")) {
-    const key = `${event.symbol}:${event.direction}`;
-    const candidate = current.get(key);
+    const candidate = current.get(`${event.symbol}:${event.direction}`);
     if (!candidate || !EXECUTABLE.has(candidate.entrySignal)) {
       if (event.firstConfirmedAt && !event.confirmationLostAt) event.confirmationLostAt = at;
       event.lifecycleStatus = "COOLDOWN";
       event.cooldownUntil = new Date(atMs + COOLDOWN_MS).toISOString();
-      changed.push(event);
     }
   }
 
-  for (const candidate of current.values()) {
+  const changed = [];
+  for (const candidate of candidates) {
     if (!EXECUTABLE.has(candidate.entrySignal)) continue;
     const key = `${candidate.symbol}:${candidate.direction}`;
     let event = [...ledger.events].reverse().find(row => `${row.symbol}:${row.direction}` === key &&
       (row.lifecycleStatus === "ACTIVE" || (row.lifecycleStatus === "COOLDOWN" && Date.parse(row.cooldownUntil) > atMs)));
-    const features = compactFeatures(candidate);
+    const features = candidateFeatures(candidate);
     if (!event) {
       event = {
         setupId: `${candidate.symbol}-${candidate.direction}-${at.replace(/[-:.TZ]/g, "")}`,
-        symbol: candidate.symbol,
-        direction: candidate.direction,
-        firstSeenAt: at,
-        firstProbeAt: null,
-        firstConfirmedAt: null,
-        confirmationType: null,
-        confirmationLostAt: null,
-        lifecycleStatus: "ACTIVE",
-        cooldownUntil: null,
+        symbol: candidate.symbol, direction: candidate.direction,
+        firstSeenAt: at, firstSeenPrice: features.lastSeenPrice, entryPrice: features.lastSeenPrice,
+        firstProbeAt: null, firstConfirmedAt: null, confirmedEntryPrice: null,
+        confirmationType: null, confirmationDelayMin: null, confirmationLostAt: null,
+        lifecycleStatus: "ACTIVE", cooldownUntil: null,
         ...features,
-        entryPrice: features.lastSeenPrice,
-        "15m": emptyWindow(), "30m": emptyWindow(),
-        "60m": { ...emptyWindow(), timeTo05: null, timeTo10: null },
-        legacy: { eventualHit05: false, stopHit35: false },
-        classification: null,
-        tags: [],
-        firstHit05At: null,
-        firstHit10At: null,
-        firstHit20At: null,
-        firstStop35At: null,
-        lastSeenAt: at,
+        setupMetrics: emptyMetrics(), confirmedMetrics: emptyMetrics(),
+        legacy: { eventualHit05: null, stopHit35: null, source: "entry-backtest-ledger" },
+        classification: null, tags: [], lastSeenAt: at,
       };
       ledger.events.push(event);
     } else {
       Object.assign(event, features, { lifecycleStatus: "ACTIVE", cooldownUntil: null, lastSeenAt: at });
+      event.entryPrice = event.firstSeenPrice;
     }
     if (candidate.entryStage === "CONFIRMED") {
-      event.firstConfirmedAt ??= at;
-      event.confirmationType ??= candidate.executionTier ?? "MIXED";
+      if (!event.firstConfirmedAt) {
+        event.firstConfirmedAt = at;
+        event.confirmedEntryPrice = features.lastSeenPrice;
+        event.confirmationType = candidate.executionTier ?? "MIXED";
+        event.confirmationDelayMin = round((atMs - Date.parse(event.firstSeenAt)) / 60_000, 2);
+      }
     } else {
       event.firstProbeAt ??= at;
       if (event.firstConfirmedAt && !event.confirmationLostAt) event.confirmationLostAt = at;
@@ -130,112 +156,136 @@ export function updateLifecycle(ledger, latest) {
   return changed;
 }
 
-export function applyCandles(event, candles) {
-  if (!Number.isFinite(event.entryPrice) || !event.firstSeenAt) return false;
-  const start = Date.parse(event.firstSeenAt);
+const normalizeCandles = candles => candles.map(candle => ({
+  openTime: Number(candle.openTime ?? candle[0]),
+  high: Number(candle.high ?? candle[2]), low: Number(candle.low ?? candle[3]),
+})).filter(candle => Number.isFinite(candle.openTime) && candle.high > 0 && candle.low > 0)
+  .sort((a, b) => a.openTime - b.openTime);
+
+function calculateMetrics(event, anchorAt, anchorPrice, candles, nowMs) {
+  const metrics = emptyMetrics();
+  if (!anchorAt || !Number.isFinite(anchorPrice)) return metrics;
+  const start = Date.parse(anchorAt);
   const sign = event.direction === "SHORT" ? -1 : 1;
-  const sorted = candles.map(candle => ({
-    openTime: Number(candle.openTime ?? candle[0]),
-    high: Number(candle.high ?? candle[2]),
-    low: Number(candle.low ?? candle[3]),
-  })).filter(candle => Number.isFinite(candle.openTime) && candle.high > 0 && candle.low > 0)
-    .sort((a, b) => a.openTime - b.openTime);
-  const move = price => sign * (price / event.entryPrice - 1) * 100;
-  let changed = false;
+  const move = price => sign * (price / anchorPrice - 1) * 100;
   for (const minutes of WINDOWS) {
-    const rows = sorted.filter(c => c.openTime + CANDLE_MS > start && c.openTime < start + minutes * 60_000);
-    if (!rows.length) continue;
+    const end = start + minutes * 60_000;
+    const requiredStart = Math.floor(start / CANDLE_MS) * CANDLE_MS;
+    const requiredLastOpen = Math.ceil(end / CANDLE_MS) * CANDLE_MS - CANDLE_MS;
+    const byOpen = new Map(candles.map(candle => [candle.openTime, candle]));
+    let contiguousThrough = requiredStart;
+    for (let open = requiredStart; open <= requiredLastOpen; open += CANDLE_MS) {
+      if (!byOpen.has(open)) break;
+      contiguousThrough = open + CANDLE_MS;
+    }
     const target = emptyWindow();
     if (minutes === 60) Object.assign(target, { timeTo05: null, timeTo10: null });
-    let mfe = 0;
-    let mae = 0;
-    let stopped = false;
+    target.checkedThrough = contiguousThrough > requiredStart ? new Date(contiguousThrough).toISOString() : null;
+    target.dataComplete = contiguousThrough >= end;
+    target.matured = nowMs >= end && target.dataComplete;
+    const rows = candles.filter(candle => candle.openTime + CANDLE_MS > start && candle.openTime < end);
+    let mfe = 0, mae = 0, stopped = false;
     for (const candle of rows) {
-      const partialEntryCandle = candle.openTime < start;
-      const favorablePct = partialEntryCandle ? 0 : Math.max(0, move(sign > 0 ? candle.high : candle.low));
+      const partialAnchorCandle = candle.openTime < start;
+      const favorablePct = partialAnchorCandle ? 0 : Math.max(0, move(sign > 0 ? candle.high : candle.low));
       const adversePct = Math.min(0, move(sign > 0 ? candle.low : candle.high));
-      mfe = Math.max(mfe, favorablePct);
-      mae = Math.min(mae, adversePct);
+      mfe = Math.max(mfe, favorablePct); mae = Math.min(mae, adversePct);
       const hitAt = new Date(candle.openTime + CANDLE_MS).toISOString();
-      const stopHit = adversePct <= -3.5;
-      // OHLC cannot prove intrabar order, so the stop wins a same-candle tie.
-      if (!stopped && stopHit) {
-        stopped = true;
-        target.firstStop35At ??= hitAt;
+      if (!stopped && adversePct <= -3.5) {
+        stopped = true; target.firstStop35At ??= hitAt;
       } else if (!stopped) {
         if (favorablePct >= 0.5) target.firstHit05At ??= hitAt;
         if (favorablePct >= 1) target.firstHit10At ??= hitAt;
         if (favorablePct >= 2) target.firstHit20At ??= hitAt;
       }
     }
-    Object.assign(target, {
-      mfePct: round(mfe), maePct: round(mae),
-      hit05: target.firstHit05At !== null,
-      hit10: target.firstHit10At !== null,
-      hit20: target.firstHit20At !== null,
-      failedBefore05: target.firstStop35At !== null && target.firstHit05At === null,
-      failedBefore10: target.firstStop35At !== null && target.firstHit10At === null,
-    });
+    if (rows.length) { target.mfePct = round(mfe); target.maePct = round(mae); }
+    target.hit05 = target.firstHit05At !== null;
+    target.hit10 = target.firstHit10At !== null;
+    target.hit20 = target.firstHit20At !== null;
+    target.failedBefore05 = target.firstStop35At !== null && !target.hit05;
+    target.failedBefore10 = target.firstStop35At !== null && !target.hit10;
     if (minutes === 60) {
       target.timeTo05 = target.firstHit05At ? Math.max(0, Math.round((Date.parse(target.firstHit05At) - start) / 60_000)) : null;
       target.timeTo10 = target.firstHit10At ? Math.max(0, Math.round((Date.parse(target.firstHit10At) - start) / 60_000)) : null;
-      event.firstHit05At = target.firstHit05At;
-      event.firstHit10At = target.firstHit10At;
-      event.firstHit20At = target.firstHit20At;
-      event.firstStop35At = target.firstStop35At;
-      event.legacy.eventualHit05 = target.hit05;
-      event.legacy.stopHit35 = target.firstStop35At !== null;
-      event.classification = target.hit05
-        ? (!event.firstConfirmedAt ? "FALSE_NEGATIVE" : event.confirmationType === "CLEAN" ? "CLEAN_WIN" : "MIXED_WIN")
-        : event.firstProbeAt && !event.firstConfirmedAt && target.failedBefore05 ? "GOOD_BLOCK" : null;
-      const tags = new Set(event.tags ?? []);
-      if (target.hit20) tags.add("RUNNER");
-      if (target.hit20) tags.add("HIT_2PCT");
-      if (event.confirmationLostAt && event.firstConfirmedAt &&
-        Date.parse(event.confirmationLostAt) - Date.parse(event.firstConfirmedAt) < 15 * 60_000) tags.add("FLASH_CONFIRMED");
-      event.tags = [...tags];
     }
-    event[`${minutes}m`] = target;
-    changed = true;
+    metrics[`${minutes}m`] = target;
   }
-  return changed;
+  return metrics;
 }
 
-export function summarize(events, nowMs = Date.now()) {
-  const summary = {
-    total: events.length, active: 0, clean: 0, mixed: 0,
-    matured15m: 0, matured30m: 0, matured60m: 0,
-    hit05_15m: 0, hit10_15m: 0,
-    hit05_30m: 0, hit10_30m: 0, hit20_30m: 0,
-    hit05_60m: 0, hit10_60m: 0, hit20_60m: 0,
-    hit05Rate15m: null, hit10Rate15m: null,
-    hit05Rate30m: null, hit10Rate30m: null, hit20Rate30m: null,
-    hit05Rate60m: null, hit10Rate60m: null, hit20Rate60m: null,
-    byClassification: {},
-  };
-  for (const event of events) {
-    if (event.lifecycleStatus === "ACTIVE") summary.active++;
-    if (event.confirmationType === "CLEAN") summary.clean++;
-    if (event.confirmationType === "MIXED") summary.mixed++;
-    for (const minutes of WINDOWS) {
-      const matured = nowMs >= Date.parse(event.firstSeenAt) + minutes * 60_000;
-      if (event[`${minutes}m`]) event[`${minutes}m`].matured = matured;
-      if (!matured) continue;
-      summary[`matured${minutes}m`]++;
-      for (const threshold of minutes === 15 ? ["05", "10"] : ["05", "10", "20"]) {
-        if (event[`${minutes}m`]?.[`hit${threshold}`]) summary[`hit${threshold}_${minutes}m`]++;
-      }
-    }
-    if (event.classification) summary.byClassification[event.classification] = (summary.byClassification[event.classification] ?? 0) + 1;
+export function applyCandles(event, candles, nowMs = Date.now()) {
+  migrateEvent(event);
+  const normalized = normalizeCandles(candles);
+  event.setupMetrics = calculateMetrics(event, event.firstSeenAt, event.firstSeenPrice, normalized, nowMs);
+  event.confirmedMetrics = calculateMetrics(event, event.firstConfirmedAt, event.confirmedEntryPrice, normalized, nowMs);
+  const setup60 = event.setupMetrics["60m"];
+  const confirmed60 = event.confirmedMetrics["60m"];
+  if (!event.firstConfirmedAt) {
+    event.classification = setup60.hit05 ? "FALSE_NEGATIVE" : setup60.failedBefore05 ? "GOOD_BLOCK" : null;
+  } else if (Number.isFinite(event.confirmedEntryPrice)) {
+    event.classification = confirmed60.hit05 ? (event.confirmationType === "CLEAN" ? "CLEAN_WIN" : "MIXED_WIN") : null;
   }
+  const tags = new Set(event.tags ?? []);
+  if ((event.firstConfirmedAt ? confirmed60 : setup60).hit20) { tags.add("RUNNER"); tags.add("HIT_2PCT"); }
+  if (event.confirmationLostAt && event.firstConfirmedAt &&
+    Date.parse(event.confirmationLostAt) - Date.parse(event.firstConfirmedAt) < 15 * 60_000) tags.add("FLASH_CONFIRMED");
+  event.tags = [...tags];
+  event.legacy = { eventualHit05: null, stopHit35: null, source: "entry-backtest-ledger" };
+  return normalized.length > 0;
+}
+
+const confirmedAggregate = events => {
+  const aggregate = { total: events.length };
   for (const minutes of WINDOWS) {
-    const denominator = summary[`matured${minutes}m`];
+    aggregate[`matured${minutes}m`] = 0;
     for (const threshold of minutes === 15 ? ["05", "10"] : ["05", "10", "20"]) {
-      summary[`hit${threshold}Rate${minutes}m`] = denominator
-        ? round(summary[`hit${threshold}_${minutes}m`] / denominator * 100, 2) : null;
+      aggregate[`hit${threshold}_${minutes}m`] = 0;
+      aggregate[`hit${threshold}Rate${minutes}m`] = null;
     }
   }
-  return summary;
+  for (const event of events) for (const minutes of WINDOWS) {
+    const metric = event.confirmedMetrics?.[`${minutes}m`];
+    if (!metric?.matured) continue;
+    aggregate[`matured${minutes}m`]++;
+    for (const threshold of minutes === 15 ? ["05", "10"] : ["05", "10", "20"]) {
+      if (metric[`hit${threshold}`]) aggregate[`hit${threshold}_${minutes}m`]++;
+    }
+  }
+  for (const minutes of WINDOWS) for (const threshold of minutes === 15 ? ["05", "10"] : ["05", "10", "20"]) {
+    const denominator = aggregate[`matured${minutes}m`];
+    aggregate[`hit${threshold}Rate${minutes}m`] = denominator
+      ? round(aggregate[`hit${threshold}_${minutes}m`] / denominator * 100, 2) : null;
+  }
+  return aggregate;
+};
+
+const probeAggregate = events => ({
+  total: events.length,
+  matured60m: events.filter(event => event.setupMetrics?.["60m"]?.matured).length,
+  goodBlock: events.filter(event => event.classification === "GOOD_BLOCK").length,
+  falseNegative05: events.filter(event => event.setupMetrics?.["60m"]?.matured && event.setupMetrics["60m"].hit05).length,
+  falseNegative10: events.filter(event => event.setupMetrics?.["60m"]?.matured && event.setupMetrics["60m"].hit10).length,
+  falseNegative20: events.filter(event => event.setupMetrics?.["60m"]?.matured && event.setupMetrics["60m"].hit20).length,
+});
+
+export function summarize(events) {
+  const market = type => {
+    const scoped = events.filter(event => event.marketType === type);
+    const confirmed = scoped.filter(event => event.firstConfirmedAt);
+    const cleanEvents = confirmed.filter(event => event.confirmationType === "CLEAN");
+    const mixedEvents = confirmed.filter(event => event.confirmationType === "MIXED");
+    const result = confirmedAggregate(confirmed);
+    result.clean = confirmedAggregate(cleanEvents);
+    result.mixed = confirmedAggregate(mixedEvents);
+    return { confirmed: result, probe: probeAggregate(scoped.filter(event => !event.firstConfirmedAt)) };
+  };
+  return {
+    totalEvents: events.length,
+    unknownMarketEvents: events.filter(event => event.marketType === "UNKNOWN").length,
+    crypto: market("CRYPTO_PERP"),
+    tradfi: market("TRADFI_PERP"),
+  };
 }
 
 export async function updateV46Ledger({ ledger, latest, nowMs = Date.now(), fetchImpl = fetch }) {
@@ -243,17 +293,18 @@ export async function updateV46Ledger({ ledger, latest, nowMs = Date.now(), fetc
   const relevant = ledger.events.filter(event => nowMs - Date.parse(event.firstSeenAt) <= 2 * 60 * 60_000);
   for (const symbol of new Set(relevant.map(event => event.symbol))) {
     const events = relevant.filter(event => event.symbol === symbol);
-    const start = Math.min(...events.map(event => Math.floor(Date.parse(event.firstSeenAt) / CANDLE_MS) * CANDLE_MS));
+    const anchors = events.flatMap(event => [event.firstSeenAt, event.firstConfirmedAt]).filter(Boolean).map(Date.parse);
+    const start = Math.floor(Math.min(...anchors) / CANDLE_MS) * CANDLE_MS;
     try {
       const candles = await fetchClosedKlines(symbol, start, nowMs, fetchImpl);
-      for (const event of events) applyCandles(event, candles);
+      for (const event of events) applyCandles(event, candles, nowMs);
     } catch (error) {
       console.warn(`warning: ${symbol} V4.6 window update skipped: ${error.message}`);
     }
   }
-  ledger.version = "V46-EVENT-LEDGER-1";
-  ledger.rules = { ...createV46Ledger().rules };
-  ledger.summary = summarize(ledger.events, nowMs);
+  ledger.version = "V46-EVENT-LEDGER-2";
+  ledger.rules = rules();
+  ledger.summary = summarize(ledger.events);
   ledger.updatedAt = new Date(nowMs).toISOString();
   return ledger;
 }
@@ -265,7 +316,7 @@ export async function run({ root = process.cwd(), nowMs = Date.now(), fetchImpl 
   try { ledger = JSON.parse(fs.readFileSync(ledgerPath, "utf8")); } catch (error) { if (error.code !== "ENOENT") throw error; }
   await updateV46Ledger({ ledger, latest, nowMs, fetchImpl });
   fs.writeFileSync(ledgerPath, `${JSON.stringify(ledger, null, 2)}\n`);
-  console.log(`V4.6 ledger updated. total=${ledger.summary.total} active=${ledger.summary.active} 60m+0.5=${ledger.summary.hit05_60m}`);
+  console.log(`V4.6 ledger updated. total=${ledger.summary.totalEvents} cryptoConfirmed=${ledger.summary.crypto.confirmed.total}`);
   return ledger;
 }
 
