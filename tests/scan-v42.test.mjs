@@ -24,8 +24,8 @@ const api = load();
 
 const executable = new Set(['EARLY_ENTRY', 'BREAKOUT_ENTRY', 'RETEST_ENTRY']);
 
-test('reports the V4.6 version', () => {
-  assert.equal(api.VERSION, 'OI-RADAR-V4.6');
+test('reports the V4.6.1 version', () => {
+  assert.equal(api.VERSION, 'OI-RADAR-V4.6.1');
 });
 
 const base = {
@@ -373,7 +373,7 @@ test('DOT-like LONG with bearish CVD and order flow becomes PROBE and runner LOW
     flag === 'ORDER_FLOW_OPPOSES_DIRECTION').length, 1);
 });
 
-test('EGLD-like LONG with bearish CVD and confidence below 60 becomes PROBE', () => {
+test('EGLD-like LONG exposes opposing flow without treating score as probability', () => {
   const cvdOnlyOpposition = {
     ...bearishMicrostructure,
     flow: {
@@ -395,8 +395,8 @@ test('EGLD-like LONG with bearish CVD and confidence below 60 becomes PROBE', ()
   assert.equal(out.strictPriceReclaim, true);
   assert.equal(out.orderFlowBias, 'NEUTRAL');
   assert.equal(out.cvdBias, 'BEARISH');
-  assert.ok(out.directionConfidence < 60);
-  assert.equal(out.entryStage, 'PROBE');
+  assert.equal(out.directionConfidence, out.executionScore);
+  assert.equal(out.executionTier, 'MIXED');
   assert.notEqual(out.v45RunnerPotential, 'HIGH');
   assert.equal(out.v45RiskFlags.filter(flag =>
     flag === 'ORDER_FLOW_OPPOSES_DIRECTION').length, 1);

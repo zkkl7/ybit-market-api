@@ -144,15 +144,24 @@ jobs:
           echo "Entry backtest summary:"
           jq '.summary' data/entry-backtest.json
 
+      - name: Update V4.6 event ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/update-v46-ledger.mjs
+          echo "V4.6 event summary:"
+          jq '.summary' data/v46-ledger.json
+
       - name: Commit latest snapshot
         shell: bash
         run: |
           set -euo pipefail
 
-          if git diff --quiet -- data/latest.json data/history.json data/entry-backtest.json \
+          if git diff --quiet -- data/latest.json data/history.json data/entry-backtest.json data/v46-ledger.json \
             && git ls-files --error-unmatch data/latest.json >/dev/null 2>&1 \
             && git ls-files --error-unmatch data/history.json >/dev/null 2>&1 \
-            && git ls-files --error-unmatch data/entry-backtest.json >/dev/null 2>&1; then
+            && git ls-files --error-unmatch data/entry-backtest.json >/dev/null 2>&1 \
+            && git ls-files --error-unmatch data/v46-ledger.json >/dev/null 2>&1; then
             echo "No snapshot/history/entry ledger changes to commit."
             exit 0
           fi
@@ -160,7 +169,7 @@ jobs:
           git config user.name "radar-snapshot-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add data/latest.json data/history.json data/entry-backtest.json
+          git add data/latest.json data/history.json data/entry-backtest.json data/v46-ledger.json
 
           git commit -m "chore: update radar snapshot, history, and entry ledger"
 

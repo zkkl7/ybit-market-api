@@ -3,7 +3,7 @@ const BASE_SCAN_URL =
   "https://ybit-market-api.vercel.app/api/scan";
 
 const BYBIT_BASE = "https://api.bybit.com";
-const VERSION = "OI-RADAR-V4.6";
+const VERSION = "OI-RADAR-V4.6.1";
 const V45_MAX_MICROSTRUCTURE_SYMBOLS = 12;
 const V45_FETCH_CONCURRENCY = 4;
 const V45_FETCH_TIMEOUT_MS = 2500;
@@ -950,6 +950,11 @@ function v45Confirmation(row, direction, entrySignal) {
     : (p5 ?? 0) > 0 && (p15 ?? 0) > 0;
   const strictPriceReclaim = Number.isFinite(price) && Number.isFinite(keyLevel)
     ? direction === "LONG"
+      ? price >= keyLevel
+      : price <= keyLevel
+    : false;
+  const nearReclaim = Number.isFinite(price) && Number.isFinite(keyLevel)
+    ? direction === "LONG"
       ? price >= keyLevel * 0.999
       : price <= keyLevel * 1.001
     : false;
@@ -987,6 +992,32 @@ function v45Confirmation(row, direction, entrySignal) {
   const relativeStrengthOpposes = relativeSignals.filter(value => value <= -0.2).length >= 2;
   const accelerationAligned = cvdAccelerationBias === directionBias;
   const accelerationOpposes = cvdAccelerationBias === oppositeBias;
+  const persistenceVotes = flow.status === "ok" ? [
+    [flow.cvd1m, flow.cvd3m, flow.cvd5m].filter(Number.isFinite)
+      .filter(value => value * directionSign > 0).length >= 2,
+    [flow.cvdSlope1m, flow.cvdSlope3m, flow.cvdSlope5m].filter(Number.isFinite)
+      .filter(value => value * directionSign > 0).length >= 2,
+    accelerationAligned,
+    Number.isFinite(imbalance) && imbalance * directionSign >= 0.08,
+  ] : [];
+  const opposingPersistenceVotes = flow.status === "ok" ? [
+    [flow.cvd1m, flow.cvd3m, flow.cvd5m].filter(Number.isFinite)
+      .filter(value => value * directionSign < 0).length >= 2,
+    [flow.cvdSlope1m, flow.cvdSlope3m, flow.cvdSlope5m].filter(Number.isFinite)
+      .filter(value => value * directionSign < 0).length >= 2,
+    accelerationOpposes,
+    Number.isFinite(imbalance) && imbalance * directionSign <= -0.08,
+  ] : [];
+  const alignedPersistenceCount = persistenceVotes.filter(Boolean).length;
+  const opposingPersistenceCount = opposingPersistenceVotes.filter(Boolean).length;
+  const microPersistenceScore = flow.status === "ok"
+    ? round(clamp(50 + alignedPersistenceCount * 12.5 - opposingPersistenceCount * 12.5), 1)
+    : null;
+  const microPersistence = flow.status !== "ok"
+    ? "UNAVAILABLE"
+    : alignedPersistenceCount >= 3 ? "PERSISTENT"
+    : opposingPersistenceCount >= 3 ? "OPPOSING"
+    : "MIXED";
   const oiRising = (oi15 ?? 0) > 0 && (oi30 ?? 0) > 0;
   const adverseOiFlowPrice = oiRising && opposingFlow && priceAgainst;
   const aggressiveFlowAbsorption = alignedFlow && (priceAgainst || opposingMicroprice);
@@ -1014,29 +1045,20 @@ function v45Confirmation(row, direction, entrySignal) {
   if (adverseOiFlowPrice) priceConfirmScore -= 25;
   priceConfirmScore = round(clamp(priceConfirmScore), 1);
 
-  let directionConfidence = priceConfirmScore;
-  if (alignedFlow) directionConfidence += 15;
-  if (opposingFlow) directionConfidence -= 20;
-  if (alignedBook) directionConfidence += 5;
-  if (opposingBook) directionConfidence -= 5;
-  if (alignedMicroprice) directionConfidence += 5;
-  if (opposingMicroprice) directionConfidence -= 5;
-  if (wideSpread) directionConfidence -= veryWideSpread ? 20 : 8;
-  if (relativeStrengthAligned) directionConfidence += 7;
-  if (relativeStrengthOpposes) directionConfidence -= 9;
-  if (accelerationAligned) directionConfidence += 4;
-  if (accelerationOpposes) directionConfidence -= 4;
-  if (aggressiveFlowAbsorption) directionConfidence -= 10;
-  if (opposingFlowAbsorption) directionConfidence += 8;
-  if (row.directionalBias === directionBias) directionConfidence += 10;
-  if (row.directionalBias === "NEUTRAL") directionConfidence -= 5;
-  if (adverseOiFlowPrice) directionConfidence -= 20;
-  directionConfidence = round(clamp(directionConfidence), 1);
+  // Each input family votes once. directionConfidence is retained as a
+  // compatibility alias; neither field is a calibrated probability.
+  let executionScore = priceConfirmScore;
+  if (row.directionalBias === directionBias) executionScore += 5;
+  if (row.directionalBias === "NEUTRAL") executionScore -= 3;
+  if (microPersistence === "PERSISTENT") executionScore += 5;
+  if (microPersistence === "OPPOSING") executionScore -= 5;
+  executionScore = round(clamp(executionScore), 1);
+  const directionConfidence = executionScore;
 
   const behaviorConfirmed = strictPriceReclaim ||
     (strongAlignedFlow && !priceAgainst);
   const confirmationInvalidated = veryWideSpread || strongOpposingFlow ||
-    adverseOiFlowPrice || (cvdOpposes && directionConfidence < 60);
+    adverseOiFlowPrice || (cvdOpposes && executionScore < 60);
   const executable = ["EARLY_ENTRY", "BREAKOUT_ENTRY", "RETEST_ENTRY"].includes(entrySignal);
   const entryStage = executable && behaviorConfirmed &&
     !adverseOiFlowPrice && !confirmationInvalidated
@@ -1060,6 +1082,14 @@ function v45Confirmation(row, direction, entrySignal) {
   if (flow.status !== "ok") riskFlags.add("ORDER_FLOW_UNAVAILABLE");
   if (book.status !== "ok") riskFlags.add("ORDER_BOOK_UNAVAILABLE");
   const v45RiskFlags = [...riskFlags];
+  const mixedRiskFlags = new Set([
+    "ORDER_FLOW_OPPOSES_DIRECTION", "MICROPRICE_OPPOSES_DIRECTION",
+    "KEY_LEVEL_NOT_RECLAIMED", "WIDE_SPREAD", "VERY_WIDE_SPREAD",
+    "OI_UP_CVD_AND_PRICE_AGAINST_DIRECTION",
+  ]);
+  const executionTier = entryStage === "CONFIRMED" &&
+    !v45RiskFlags.some(flag => mixedRiskFlags.has(flag)) &&
+    microPersistence !== "OPPOSING" ? "CLEAN" : "MIXED";
 
   return {
     entryStage,
@@ -1068,7 +1098,12 @@ function v45Confirmation(row, direction, entrySignal) {
     v45Confirmation: entryStage === "CONFIRMED" ? "CONFIRMED" : "UNCONFIRMED",
     v46Confirmation: entryStage === "CONFIRMED" ? "CONFIRMED" : "UNCONFIRMED",
     priceConfirmScore,
+    executionScore,
+    executionTier,
     strictPriceReclaim,
+    nearReclaim,
+    microPersistence,
+    microPersistenceScore,
     takerBuyVolume: flow.status === "ok" ? flow.takerBuyVolume : null,
     takerSellVolume: flow.status === "ok" ? flow.takerSellVolume : null,
     buySellImbalance: flow.status === "ok" ? flow.buySellImbalance : null,
@@ -1145,6 +1180,9 @@ function classifyV45Runner(candidate, legacyRunner) {
   } else if (candidate.entryStage !== "CONFIRMED" && v45RunnerPotential === "HIGH") {
     v45RunnerPotential = "MEDIUM";
     reasons.push("ENTRY_STAGE_PROBE");
+  } else if (candidate.executionTier === "MIXED" && v45RunnerPotential === "HIGH") {
+    v45RunnerPotential = "MEDIUM";
+    reasons.push("EXECUTION_TIER_MIXED");
   }
   if (neutralPositionBuild && !directionalConfirmation && v45RunnerPotential === "HIGH") {
     v45RunnerPotential = "MEDIUM";
@@ -1690,8 +1728,9 @@ export default async function handler(req, res) {
         v45Confirmation: {
           mode: "sidecar",
           preservesV44EntrySignal: true,
-          longKeyLevelThreshold: 0.999,
-          shortKeyLevelThreshold: 1.001,
+          longKeyLevelThreshold: 1,
+          shortKeyLevelThreshold: 1,
+          nearReclaimTolerancePct: 0.1,
           behaviorNotClockBased: true,
           orderBookCanTriggerEntry: false,
         },
@@ -1703,11 +1742,13 @@ export default async function handler(req, res) {
           orderBook: ["microprice", "spreadBps", "top10Depth", "top20Depth"],
           relativeStrength: ["relBtc5m", "relBtc15m", "relBtc1h", "relEth15m"],
           confirmationCore: "strict keyLevel reclaim or strong aligned aggressive flow",
+          executionScoreIsProbability: false,
+          microPersistenceCanTriggerEntry: false,
           invalidation: "strong adverse flow or very wide spread",
           liquidationFlow: "not implemented: stateless REST scans are unsuitable for a sub-minute liquidation stream",
         },
       },
-      scoreMeaning: "V4.4 candidateQuality, timingScore, entrySignal and runner fields are preserved. V4.5 entryStage semantics remain behavior-based; V4.6 adds lightweight CVD dynamics, microprice, spread, relative-strength and absorption adjustments that cannot trigger Entry alone.",
+      scoreMeaning: "V4.4 candidateQuality, timingScore, entrySignal and runner fields are preserved. executionScore is a non-probability execution-quality score with one vote per input family. V4.6.1 adds CLEAN/MIXED tiers, strict reclaim, nearReclaim and lightweight persistence without triggering Entry alone.",
       ...lists,
       v45AbSummary: v45AbSummary(lists),
     });

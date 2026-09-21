@@ -138,6 +138,9 @@ function classifyV45Runner(candidate, legacyRunner) {
   } else if (candidate.entryStage !== "CONFIRMED" && v45RunnerPotential === "HIGH") {
     v45RunnerPotential = "MEDIUM";
     reasons.push("ENTRY_STAGE_PROBE");
+  } else if (candidate.executionTier === "MIXED" && v45RunnerPotential === "HIGH") {
+    v45RunnerPotential = "MEDIUM";
+    reasons.push("EXECUTION_TIER_MIXED");
   }
   if (neutralPositionBuild && !directionalConfirmation && v45RunnerPotential === "HIGH") {
     v45RunnerPotential = "MEDIUM";
@@ -184,13 +187,19 @@ function compactCandidate(c) {
     timingRiskFlags: c.timingRiskFlags ?? [],
 
     entryStage: c.entryStage ?? null,
+    executionTier: c.executionTier ?? null,
     v45EntrySignal: c.v45EntrySignal ?? null,
     priceConfirmScore: c.priceConfirmScore ?? null,
+    executionScore: c.executionScore ?? c.directionConfidence ?? null,
+    strictReclaim: c.strictPriceReclaim ?? null,
+    nearReclaim: c.nearReclaim ?? null,
+    microPersistence: c.microPersistence ?? null,
     cvdBias: c.cvdBias ?? null,
     orderFlowBias: c.orderFlowBias ?? null,
+    micropriceBias: c.micropriceBias ?? null,
     obiScore: c.obiScore ?? null,
-    directionConfidence: c.directionConfidence ?? null,
     invalidationReason: c.invalidationReason ?? null,
+    v46RiskFlags: c.v46RiskFlags ?? c.v45RiskFlags ?? [],
     v45RunnerPotential: c.v45RunnerPotential ?? null,
     v45DataFreshness: c.v45DataFreshness ?? null,
 
@@ -505,11 +514,12 @@ const syncEntryRunnerFields = (entries, enrichedPool) =>
     if (!enriched) return entry;
     const {
       finalCandidateScore, tradeStyle, runnerPotential, runnerScore, runnerReasons,
-      entryStage, v45EntryStage, v45EntrySignal, v45Confirmation,
+      entryStage, executionTier, v45EntryStage, v45EntrySignal, v45Confirmation,
       priceConfirmScore, takerBuyVolume, takerSellVolume, buySellImbalance,
       cvd1m, cvd3m, cvd5m, cvdBias, orderFlowBias,
       obiScore, obiTop10, obiTop20, orderBookBias,
-      directionConfidence, invalidationReason, v45RiskFlags,
+      executionScore, strictPriceReclaim, nearReclaim, microPersistence,
+      micropriceBias, directionConfidence, invalidationReason, v45RiskFlags, v46RiskFlags,
       v45RunnerPotential, v45RunnerReasons, v45DataFreshness,
     } = enriched;
     return {
@@ -520,10 +530,15 @@ const syncEntryRunnerFields = (entries, enrichedPool) =>
       runnerScore,
       runnerReasons,
       entryStage,
+      executionTier,
       v45EntryStage,
       v45EntrySignal,
       v45Confirmation,
       priceConfirmScore,
+      executionScore,
+      strictPriceReclaim,
+      nearReclaim,
+      microPersistence,
       takerBuyVolume,
       takerSellVolume,
       buySellImbalance,
@@ -536,9 +551,11 @@ const syncEntryRunnerFields = (entries, enrichedPool) =>
       obiTop10,
       obiTop20,
       orderBookBias,
+      micropriceBias,
       directionConfidence,
       invalidationReason,
       v45RiskFlags,
+      v46RiskFlags,
       v45RunnerPotential,
       v45RunnerReasons,
       v45DataFreshness,
