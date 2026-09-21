@@ -514,6 +514,27 @@ test('trade and top-10/top-20 order book parsers expose stable confirmation fiel
   assert.equal(book.ageMs, 50);
 });
 
+test('microPersistence does not count CVD-derived slope direction as another vote', () => {
+  const make = slopes => api.evaluateCandidate({
+    ...base,
+    price: 1.01,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: true },
+    v45Microstructure: {
+      ...bullishMicrostructure,
+      flow: {
+        ...bullishMicrostructure.flow,
+        cvdSlope1m: slopes[0], cvdSlope3m: slopes[1], cvdSlope5m: slopes[2],
+        cvdAcceleration: 0, cvdAccelerationBias: 'NEUTRAL',
+      },
+    },
+  }, 'LONG');
+  const alignedSlopes = make([20, 10, 8]);
+  const opposingSlopes = make([-20, -10, -8]);
+  assert.equal(alignedSlopes.microPersistenceScore, opposingSlopes.microPersistenceScore);
+  assert.equal(alignedSlopes.microPersistence, opposingSlopes.microPersistence);
+  assert.equal(alignedSlopes.executionTier, 'CLEAN');
+});
+
 test('order book parser exposes microprice, spread and top-10/top-20 depth', () => {
   const book = api.parseOrderBook({
     ts: 1_000_000,

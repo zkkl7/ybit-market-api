@@ -9,7 +9,10 @@
       1,
       2
     ],
-    "legacyPreserved": true
+    "legacyPreserved": true,
+    "windowMetricsBasis": "5m candle high/low",
+    "tiePolicy": "stop_wins",
+    "entryPriceLocked": true
   },
   "summary": {
     "total": 6,

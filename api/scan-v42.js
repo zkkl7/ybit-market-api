@@ -995,18 +995,16 @@ function v45Confirmation(row, direction, entrySignal) {
   const persistenceVotes = flow.status === "ok" ? [
     [flow.cvd1m, flow.cvd3m, flow.cvd5m].filter(Number.isFinite)
       .filter(value => value * directionSign > 0).length >= 2,
-    [flow.cvdSlope1m, flow.cvdSlope3m, flow.cvdSlope5m].filter(Number.isFinite)
-      .filter(value => value * directionSign > 0).length >= 2,
     accelerationAligned,
     Number.isFinite(imbalance) && imbalance * directionSign >= 0.08,
+    flowBias === directionBias,
   ] : [];
   const opposingPersistenceVotes = flow.status === "ok" ? [
     [flow.cvd1m, flow.cvd3m, flow.cvd5m].filter(Number.isFinite)
       .filter(value => value * directionSign < 0).length >= 2,
-    [flow.cvdSlope1m, flow.cvdSlope3m, flow.cvdSlope5m].filter(Number.isFinite)
-      .filter(value => value * directionSign < 0).length >= 2,
     accelerationOpposes,
     Number.isFinite(imbalance) && imbalance * directionSign <= -0.08,
+    flowBias === oppositeBias,
   ] : [];
   const alignedPersistenceCount = persistenceVotes.filter(Boolean).length;
   const opposingPersistenceCount = opposingPersistenceVotes.filter(Boolean).length;
