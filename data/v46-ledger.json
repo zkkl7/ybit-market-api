@@ -1,6 +1,6 @@
 {
   "version": "V46-EVENT-LEDGER-2",
-  "updatedAt": "2026-09-21T20:30:26.919Z",
+  "updatedAt": "2026-09-21T20:44:34.699Z",
   "rules": {
     "lifecycleKey": "symbol+direction until invalidated and 45m cooldown",
     "setupAnchor": "firstSeenAt+firstSeenPrice",
@@ -22,7 +22,7 @@
     "legacyResultsSource": "data/entry-backtest.json"
   },
   "summary": {
-    "totalEvents": 272,
+    "totalEvents": 273,
     "unknownMarketEvents": 5,
     "crypto": {
       "confirmed": {
@@ -32,13 +32,13 @@
         "hit05Rate15m": 51.49,
         "hit10_15m": 35,
         "hit10Rate15m": 26.12,
-        "matured30m": 130,
-        "hit05_30m": 76,
-        "hit05Rate30m": 58.46,
+        "matured30m": 131,
+        "hit05_30m": 77,
+        "hit05Rate30m": 58.78,
         "hit10_30m": 49,
-        "hit10Rate30m": 37.69,
+        "hit10Rate30m": 37.4,
         "hit20_30m": 25,
-        "hit20Rate30m": 19.23,
+        "hit20Rate30m": 19.08,
         "matured60m": 119,
         "hit05_60m": 76,
         "hit05Rate60m": 63.87,
@@ -53,13 +53,13 @@
           "hit05Rate15m": 46.48,
           "hit10_15m": 19,
           "hit10Rate15m": 26.76,
-          "matured30m": 67,
-          "hit05_30m": 38,
-          "hit05Rate30m": 56.72,
+          "matured30m": 68,
+          "hit05_30m": 39,
+          "hit05Rate30m": 57.35,
           "hit10_30m": 26,
-          "hit10Rate30m": 38.81,
+          "hit10Rate30m": 38.24,
           "hit20_30m": 12,
-          "hit20Rate30m": 17.91,
+          "hit20Rate30m": 17.65,
           "matured60m": 62,
           "hit05_60m": 40,
           "hit05Rate60m": 64.52,
@@ -92,12 +92,12 @@
         }
       },
       "probe": {
-        "total": 97,
-        "matured60m": 90,
+        "total": 98,
+        "matured60m": 91,
         "goodBlock": 2,
-        "falseNegative05": 54,
-        "falseNegative10": 35,
-        "falseNegative20": 19
+        "falseNegative05": 55,
+        "falseNegative10": 36,
+        "falseNegative20": 20
       }
     },
     "tradfi": {
@@ -108,13 +108,13 @@
         "hit05Rate15m": 21.74,
         "hit10_15m": 2,
         "hit10Rate15m": 8.7,
-        "matured30m": 22,
+        "matured30m": 23,
         "hit05_30m": 9,
-        "hit05Rate30m": 40.91,
+        "hit05Rate30m": 39.13,
         "hit10_30m": 5,
-        "hit10Rate30m": 22.73,
+        "hit10Rate30m": 21.74,
         "hit20_30m": 2,
-        "hit20Rate30m": 9.09,
+        "hit20Rate30m": 8.7,
         "matured60m": 22,
         "hit05_60m": 12,
         "hit05Rate60m": 54.55,
@@ -129,13 +129,13 @@
           "hit05Rate15m": 21.74,
           "hit10_15m": 2,
           "hit10Rate15m": 8.7,
-          "matured30m": 22,
+          "matured30m": 23,
           "hit05_30m": 9,
-          "hit05Rate30m": 40.91,
+          "hit05Rate30m": 39.13,
           "hit10_30m": 5,
-          "hit10Rate30m": 22.73,
+          "hit10Rate30m": 21.74,
           "hit20_30m": 2,
-          "hit20Rate30m": 9.09,
+          "hit20Rate30m": 8.7,
           "matured60m": 22,
           "hit05_60m": 12,
           "hit05Rate60m": 54.55,
@@ -42026,10 +42026,10 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:10:00.000Z",
-          "dataComplete": false,
-          "matured": false,
-          "mfePct": 4.1173,
+          "checkedThrough": "2026-09-21T20:20:00.000Z",
+          "dataComplete": true,
+          "matured": true,
+          "mfePct": 7.7503,
           "maePct": -0.7804,
           "hit05": true,
           "hit10": true,
@@ -43311,7 +43311,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 7.5159,
@@ -43616,10 +43616,10 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 2.7598,
+          "mfePct": 3.1576,
           "maePct": -2.2957,
           "hit05": true,
           "hit10": true,
@@ -43668,10 +43668,10 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 2.7598,
+          "mfePct": 3.1576,
           "maePct": -2.2957,
           "hit05": true,
           "hit10": true,
@@ -43784,7 +43784,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.3492,
@@ -43972,7 +43972,7 @@
           "firstStop35At": "2026-09-21T20:05:00.000Z"
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 1.7393,
@@ -44024,7 +44024,7 @@
           "firstStop35At": "2026-09-21T20:05:00.000Z"
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 1.7393,
@@ -44156,7 +44156,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 1.8428,
@@ -44208,7 +44208,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 1.8428,
@@ -44336,10 +44336,10 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 2.227,
+          "mfePct": 2.9371,
           "maePct": -0.3335,
           "hit05": true,
           "hit10": true,
@@ -44388,10 +44388,10 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 2.227,
+          "mfePct": 2.9371,
           "maePct": -0.3335,
           "hit05": true,
           "hit10": true,
@@ -44509,9 +44509,9 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:10:00.000Z",
-          "dataComplete": false,
-          "matured": false,
+          "checkedThrough": "2026-09-21T20:15:00.000Z",
+          "dataComplete": true,
+          "matured": true,
           "mfePct": 0.1391,
           "maePct": -0.6004,
           "hit05": false,
@@ -44525,11 +44525,11 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:10:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.1391,
-          "maePct": -0.6004,
+          "maePct": -0.7147,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -44561,9 +44561,9 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:10:00.000Z",
-          "dataComplete": false,
-          "matured": false,
+          "checkedThrough": "2026-09-21T20:15:00.000Z",
+          "dataComplete": true,
+          "matured": true,
           "mfePct": 0.1391,
           "maePct": -0.6004,
           "hit05": false,
@@ -44577,11 +44577,11 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:10:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.1391,
-          "maePct": -0.6004,
+          "maePct": -0.7147,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -44619,8 +44619,8 @@
       "confirmationType": "CLEAN",
       "confirmationDelayMin": 0,
       "confirmationLostAt": "2026-09-21T20:13:20.475Z",
-      "lifecycleStatus": "ACTIVE",
-      "cooldownUntil": null,
+      "lifecycleStatus": "COOLDOWN",
+      "cooldownUntil": "2026-09-21T21:28:20.676Z",
       "lastEntrySignal": "BREAKOUT_ENTRY",
       "lastSeenPrice": 0.594,
       "lastExecutionTier": "CLEAN",
@@ -44703,7 +44703,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.9327,
@@ -44755,7 +44755,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.9327,
@@ -44863,37 +44863,37 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:10:00.000Z",
-          "dataComplete": false,
-          "matured": false,
-          "mfePct": 0.2578,
+          "checkedThrough": "2026-09-21T20:25:00.000Z",
+          "dataComplete": true,
+          "matured": true,
+          "mfePct": 0.7479,
           "maePct": -1.0058,
-          "hit05": false,
+          "hit05": true,
           "hit10": false,
           "hit20": false,
           "failedBefore05": false,
           "failedBefore10": false,
-          "firstHit05At": null,
+          "firstHit05At": "2026-09-21T20:15:00.000Z",
           "firstHit10At": null,
           "firstHit20At": null,
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:10:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0.2578,
+          "mfePct": 0.8111,
           "maePct": -1.0058,
-          "hit05": false,
+          "hit05": true,
           "hit10": false,
           "hit20": false,
           "failedBefore05": false,
           "failedBefore10": false,
-          "firstHit05At": null,
+          "firstHit05At": "2026-09-21T20:15:00.000Z",
           "firstHit10At": null,
           "firstHit20At": null,
           "firstStop35At": null,
-          "timeTo05": null,
+          "timeTo05": 22,
           "timeTo10": null
         }
       },
@@ -44915,37 +44915,37 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:10:00.000Z",
-          "dataComplete": false,
-          "matured": false,
-          "mfePct": 0.2578,
+          "checkedThrough": "2026-09-21T20:25:00.000Z",
+          "dataComplete": true,
+          "matured": true,
+          "mfePct": 0.7479,
           "maePct": -1.0058,
-          "hit05": false,
+          "hit05": true,
           "hit10": false,
           "hit20": false,
           "failedBefore05": false,
           "failedBefore10": false,
-          "firstHit05At": null,
+          "firstHit05At": "2026-09-21T20:15:00.000Z",
           "firstHit10At": null,
           "firstHit20At": null,
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:10:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0.2578,
+          "mfePct": 0.8111,
           "maePct": -1.0058,
-          "hit05": false,
+          "hit05": true,
           "hit10": false,
           "hit20": false,
           "failedBefore05": false,
           "failedBefore10": false,
-          "firstHit05At": null,
+          "firstHit05At": "2026-09-21T20:15:00.000Z",
           "firstHit10At": null,
           "firstHit20At": null,
           "firstStop35At": null,
-          "timeTo05": null,
+          "timeTo05": 22,
           "timeTo10": null
         }
       },
@@ -44954,7 +44954,7 @@
         "stopHit35": null,
         "source": "entry-backtest-ledger"
       },
-      "classification": null,
+      "classification": "CLEAN_WIN",
       "tags": [],
       "lastSeenAt": "2026-09-21T19:52:52.923Z"
     },
@@ -45067,11 +45067,11 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.5869,
-          "maePct": -0.3521,
+          "maePct": -0.4695,
           "hit05": true,
           "hit10": false,
           "hit20": false,
@@ -45119,11 +45119,11 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.5869,
-          "maePct": -0.3521,
+          "maePct": -0.4695,
           "hit05": true,
           "hit10": false,
           "hit20": false,
@@ -45252,7 +45252,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.361,
@@ -45304,7 +45304,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.361,
@@ -45416,11 +45416,11 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.378,
-          "maePct": -1.2632,
+          "maePct": -1.8798,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -45584,7 +45584,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.0412,
@@ -45718,53 +45718,53 @@
       "confirmedFeatures": null,
       "setupMetrics": {
         "15m": {
-          "checkedThrough": null,
-          "dataComplete": false,
-          "matured": false,
-          "mfePct": null,
-          "maePct": null,
-          "hit05": false,
+          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "dataComplete": true,
+          "matured": true,
+          "mfePct": 0.5457,
+          "maePct": -0.3411,
+          "hit05": true,
           "hit10": false,
           "hit20": false,
           "failedBefore05": false,
           "failedBefore10": false,
-          "firstHit05At": null,
+          "firstHit05At": "2026-09-21T20:30:00.000Z",
           "firstHit10At": null,
           "firstHit20At": null,
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": null,
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": null,
-          "maePct": null,
-          "hit05": false,
+          "mfePct": 0.5457,
+          "maePct": -0.6139,
+          "hit05": true,
           "hit10": false,
           "hit20": false,
           "failedBefore05": false,
           "failedBefore10": false,
-          "firstHit05At": null,
+          "firstHit05At": "2026-09-21T20:30:00.000Z",
           "firstHit10At": null,
           "firstHit20At": null,
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": null,
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": null,
-          "maePct": null,
-          "hit05": false,
+          "mfePct": 0.5457,
+          "maePct": -0.6139,
+          "hit05": true,
           "hit10": false,
           "hit20": false,
           "failedBefore05": false,
           "failedBefore10": false,
-          "firstHit05At": null,
+          "firstHit05At": "2026-09-21T20:30:00.000Z",
           "firstHit10At": null,
           "firstHit20At": null,
           "firstStop35At": null,
-          "timeTo05": null,
+          "timeTo05": 17,
           "timeTo10": null
         }
       },
@@ -45825,7 +45825,7 @@
         "stopHit35": null,
         "source": "entry-backtest-ledger"
       },
-      "classification": null,
+      "classification": "FALSE_NEGATIVE",
       "tags": [],
       "lastSeenAt": "2026-09-21T20:13:20.475Z"
     },
@@ -45916,10 +45916,10 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 1.1602,
+          "mfePct": 1.2802,
           "maePct": -0.2134,
           "hit05": true,
           "hit10": true,
@@ -45932,10 +45932,10 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 1.1602,
+          "mfePct": 1.2802,
           "maePct": -0.2134,
           "hit05": true,
           "hit10": true,
@@ -45968,10 +45968,10 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 1.1602,
+          "mfePct": 1.2802,
           "maePct": -0.2134,
           "hit05": true,
           "hit10": true,
@@ -45984,10 +45984,10 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 1.1602,
+          "mfePct": 1.2802,
           "maePct": -0.2134,
           "hit05": true,
           "hit10": true,
@@ -46024,8 +46024,8 @@
       "confirmationType": null,
       "confirmationDelayMin": null,
       "confirmationLostAt": null,
-      "lifecycleStatus": "ACTIVE",
-      "cooldownUntil": null,
+      "lifecycleStatus": "COOLDOWN",
+      "cooldownUntil": "2026-09-21T21:28:20.676Z",
       "lastEntrySignal": "BREAKOUT_ENTRY",
       "lastSeenPrice": 0.07757,
       "lastExecutionTier": "MIXED",
@@ -46083,7 +46083,7 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.9822,
@@ -46099,7 +46099,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.9822,
@@ -46191,8 +46191,8 @@
       "confirmationType": null,
       "confirmationDelayMin": null,
       "confirmationLostAt": null,
-      "lifecycleStatus": "ACTIVE",
-      "cooldownUntil": null,
+      "lifecycleStatus": "COOLDOWN",
+      "cooldownUntil": "2026-09-21T21:28:20.676Z",
       "lastEntrySignal": "RETEST_ENTRY",
       "lastSeenPrice": 0.6614,
       "lastExecutionTier": "MIXED",
@@ -46248,7 +46248,7 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 1.9933,
@@ -46264,7 +46264,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 1.9933,
@@ -46424,7 +46424,7 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.3724,
@@ -46440,7 +46440,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.3724,
@@ -46476,7 +46476,7 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.3724,
@@ -46492,7 +46492,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.3724,
@@ -46600,7 +46600,7 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.3657,
@@ -46616,7 +46616,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.3657,
@@ -46652,7 +46652,7 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.3657,
@@ -46668,7 +46668,7 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0.3657,
@@ -46707,9 +46707,9 @@
       "confirmedEntryPrice": 0.06572,
       "confirmationType": "MIXED",
       "confirmationDelayMin": 0,
-      "confirmationLostAt": null,
-      "lifecycleStatus": "ACTIVE",
-      "cooldownUntil": null,
+      "confirmationLostAt": "2026-09-21T20:43:20.676Z",
+      "lifecycleStatus": "COOLDOWN",
+      "cooldownUntil": "2026-09-21T21:28:20.676Z",
       "lastEntrySignal": "RETEST_ENTRY",
       "lastSeenPrice": 0.06572,
       "lastExecutionTier": "MIXED",
@@ -46766,11 +46766,11 @@
       },
       "setupMetrics": {
         "15m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.0761,
+          "mfePct": 0.1826,
+          "maePct": -0.7304,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -46782,11 +46782,11 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.0761,
+          "mfePct": 0.1826,
+          "maePct": -0.7304,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -46798,11 +46798,11 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.0761,
+          "mfePct": 0.1826,
+          "maePct": -0.7304,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -46818,11 +46818,11 @@
       },
       "confirmedMetrics": {
         "15m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.0761,
+          "mfePct": 0.1826,
+          "maePct": -0.7304,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -46834,11 +46834,11 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.0761,
+          "mfePct": 0.1826,
+          "maePct": -0.7304,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -46850,11 +46850,11 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.0761,
+          "mfePct": 0.1826,
+          "maePct": -0.7304,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -46874,7 +46874,9 @@
         "source": "entry-backtest-ledger"
       },
       "classification": null,
-      "tags": [],
+      "tags": [
+        "FLASH_CONFIRMED"
+      ],
       "lastSeenAt": "2026-09-21T20:29:14.096Z"
     },
     {
@@ -46889,9 +46891,9 @@
       "confirmedEntryPrice": 1.811,
       "confirmationType": "MIXED",
       "confirmationDelayMin": 0,
-      "confirmationLostAt": null,
-      "lifecycleStatus": "ACTIVE",
-      "cooldownUntil": null,
+      "confirmationLostAt": "2026-09-21T20:43:20.676Z",
+      "lifecycleStatus": "COOLDOWN",
+      "cooldownUntil": "2026-09-21T21:28:20.676Z",
       "lastEntrySignal": "BREAKOUT_ENTRY",
       "lastSeenPrice": 1.811,
       "lastExecutionTier": "MIXED",
@@ -46954,11 +46956,11 @@
       },
       "setupMetrics": {
         "15m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0,
-          "maePct": -0.2761,
+          "maePct": -0.5522,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -46970,11 +46972,11 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0,
-          "maePct": -0.2761,
+          "maePct": -0.5522,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -46986,11 +46988,11 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0,
-          "maePct": -0.2761,
+          "maePct": -0.5522,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47006,11 +47008,11 @@
       },
       "confirmedMetrics": {
         "15m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0,
-          "maePct": -0.2761,
+          "maePct": -0.5522,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47022,11 +47024,11 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0,
-          "maePct": -0.2761,
+          "maePct": -0.5522,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47038,11 +47040,11 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0,
-          "maePct": -0.2761,
+          "maePct": -0.5522,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47062,7 +47064,9 @@
         "source": "entry-backtest-ledger"
       },
       "classification": null,
-      "tags": [],
+      "tags": [
+        "FLASH_CONFIRMED"
+      ],
       "lastSeenAt": "2026-09-21T20:29:14.096Z"
     },
     {
@@ -47072,28 +47076,30 @@
       "firstSeenAt": "2026-09-21T20:29:14.096Z",
       "firstSeenPrice": 0.4572,
       "entryPrice": 0.4572,
-      "firstProbeAt": null,
+      "firstProbeAt": "2026-09-21T20:43:20.676Z",
       "firstConfirmedAt": "2026-09-21T20:29:14.096Z",
       "confirmedEntryPrice": 0.4572,
       "confirmationType": "CLEAN",
       "confirmationDelayMin": 0,
-      "confirmationLostAt": null,
+      "confirmationLostAt": "2026-09-21T20:43:20.676Z",
       "lifecycleStatus": "ACTIVE",
       "cooldownUntil": null,
-      "lastEntrySignal": "BREAKOUT_ENTRY",
-      "lastSeenPrice": 0.4572,
-      "lastExecutionTier": "CLEAN",
+      "lastEntrySignal": "RETEST_ENTRY",
+      "lastSeenPrice": 0.4604,
+      "lastExecutionTier": "MIXED",
       "marketType": "CRYPTO_PERP",
-      "lastFinalCandidateScore": 67.6,
-      "lastExecutionScore": 100,
-      "lastMicroPersistence": "PERSISTENT",
+      "lastFinalCandidateScore": 99,
+      "lastExecutionScore": 59,
+      "lastMicroPersistence": "OPPOSING",
       "lastStrictReclaim": true,
       "lastNearReclaim": true,
-      "lastRiskFlags": [],
-      "lastCvdBias": "BULLISH",
-      "lastOrderFlowBias": "BULLISH",
-      "lastMicropriceBias": "NEUTRAL",
-      "lastCrossConfirmation": "LOCAL_ONLY",
+      "lastRiskFlags": [
+        "ORDER_FLOW_OPPOSES_DIRECTION"
+      ],
+      "lastCvdBias": "BEARISH",
+      "lastOrderFlowBias": "BEARISH",
+      "lastMicropriceBias": "BULLISH",
+      "lastCrossConfirmation": "CONFIRMED",
       "firstSeenFeatures": {
         "entrySignal": "BREAKOUT_ENTRY",
         "finalCandidateScore": 67.6,
@@ -47130,106 +47136,106 @@
       },
       "setupMetrics": {
         "15m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
+          "mfePct": 1.7279,
           "maePct": -1.3998,
-          "hit05": false,
-          "hit10": false,
+          "hit05": true,
+          "hit10": true,
           "hit20": false,
           "failedBefore05": false,
           "failedBefore10": false,
-          "firstHit05At": null,
-          "firstHit10At": null,
+          "firstHit05At": "2026-09-21T20:35:00.000Z",
+          "firstHit10At": "2026-09-21T20:40:00.000Z",
           "firstHit20At": null,
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
+          "mfePct": 1.7279,
           "maePct": -1.3998,
-          "hit05": false,
-          "hit10": false,
+          "hit05": true,
+          "hit10": true,
           "hit20": false,
           "failedBefore05": false,
           "failedBefore10": false,
-          "firstHit05At": null,
-          "firstHit10At": null,
+          "firstHit05At": "2026-09-21T20:35:00.000Z",
+          "firstHit10At": "2026-09-21T20:40:00.000Z",
           "firstHit20At": null,
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
+          "mfePct": 1.7279,
           "maePct": -1.3998,
-          "hit05": false,
-          "hit10": false,
+          "hit05": true,
+          "hit10": true,
           "hit20": false,
           "failedBefore05": false,
           "failedBefore10": false,
-          "firstHit05At": null,
-          "firstHit10At": null,
+          "firstHit05At": "2026-09-21T20:35:00.000Z",
+          "firstHit10At": "2026-09-21T20:40:00.000Z",
           "firstHit20At": null,
           "firstStop35At": null,
-          "timeTo05": null,
-          "timeTo10": null
+          "timeTo05": 6,
+          "timeTo10": 11
         }
       },
       "confirmedMetrics": {
         "15m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
+          "mfePct": 1.7279,
           "maePct": -1.3998,
-          "hit05": false,
-          "hit10": false,
+          "hit05": true,
+          "hit10": true,
           "hit20": false,
           "failedBefore05": false,
           "failedBefore10": false,
-          "firstHit05At": null,
-          "firstHit10At": null,
+          "firstHit05At": "2026-09-21T20:35:00.000Z",
+          "firstHit10At": "2026-09-21T20:40:00.000Z",
           "firstHit20At": null,
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
+          "mfePct": 1.7279,
           "maePct": -1.3998,
-          "hit05": false,
-          "hit10": false,
+          "hit05": true,
+          "hit10": true,
           "hit20": false,
           "failedBefore05": false,
           "failedBefore10": false,
-          "firstHit05At": null,
-          "firstHit10At": null,
+          "firstHit05At": "2026-09-21T20:35:00.000Z",
+          "firstHit10At": "2026-09-21T20:40:00.000Z",
           "firstHit20At": null,
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
+          "mfePct": 1.7279,
           "maePct": -1.3998,
-          "hit05": false,
-          "hit10": false,
+          "hit05": true,
+          "hit10": true,
           "hit20": false,
           "failedBefore05": false,
           "failedBefore10": false,
-          "firstHit05At": null,
-          "firstHit10At": null,
+          "firstHit05At": "2026-09-21T20:35:00.000Z",
+          "firstHit10At": "2026-09-21T20:40:00.000Z",
           "firstHit20At": null,
           "firstStop35At": null,
-          "timeTo05": null,
-          "timeTo10": null
+          "timeTo05": 6,
+          "timeTo10": 11
         }
       },
       "legacy": {
@@ -47237,9 +47243,11 @@
         "stopHit35": null,
         "source": "entry-backtest-ledger"
       },
-      "classification": null,
-      "tags": [],
-      "lastSeenAt": "2026-09-21T20:29:14.096Z"
+      "classification": "CLEAN_WIN",
+      "tags": [
+        "FLASH_CONFIRMED"
+      ],
+      "lastSeenAt": "2026-09-21T20:43:20.676Z"
     },
     {
       "setupId": "1000PEPEUSDT-LONG-20260921202914096",
@@ -47254,8 +47262,8 @@
       "confirmationType": null,
       "confirmationDelayMin": null,
       "confirmationLostAt": null,
-      "lifecycleStatus": "ACTIVE",
-      "cooldownUntil": null,
+      "lifecycleStatus": "COOLDOWN",
+      "cooldownUntil": "2026-09-21T21:28:20.676Z",
       "lastEntrySignal": "EARLY_ENTRY",
       "lastSeenPrice": 0.004955,
       "lastExecutionTier": "MIXED",
@@ -47296,11 +47304,11 @@
       "confirmedFeatures": null,
       "setupMetrics": {
         "15m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0,
-          "maePct": -0.7871,
+          "maePct": -1.7154,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47312,11 +47320,11 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0,
-          "maePct": -0.7871,
+          "maePct": -1.7154,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47328,11 +47336,11 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
           "mfePct": 0,
-          "maePct": -0.7871,
+          "maePct": -1.7154,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47419,9 +47427,9 @@
       "confirmedEntryPrice": 2.97,
       "confirmationType": "MIXED",
       "confirmationDelayMin": 0,
-      "confirmationLostAt": null,
-      "lifecycleStatus": "ACTIVE",
-      "cooldownUntil": null,
+      "confirmationLostAt": "2026-09-21T20:43:20.676Z",
+      "lifecycleStatus": "COOLDOWN",
+      "cooldownUntil": "2026-09-21T21:28:20.676Z",
       "lastEntrySignal": "BREAKOUT_ENTRY",
       "lastSeenPrice": 2.97,
       "lastExecutionTier": "MIXED",
@@ -47478,11 +47486,11 @@
       },
       "setupMetrics": {
         "15m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.2357,
+          "mfePct": 0.3704,
+          "maePct": -0.5051,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47494,11 +47502,11 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.2357,
+          "mfePct": 0.3704,
+          "maePct": -0.5051,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47510,11 +47518,11 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.2357,
+          "mfePct": 0.3704,
+          "maePct": -0.5051,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47530,11 +47538,11 @@
       },
       "confirmedMetrics": {
         "15m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.2357,
+          "mfePct": 0.3704,
+          "maePct": -0.5051,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47546,11 +47554,11 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.2357,
+          "mfePct": 0.3704,
+          "maePct": -0.5051,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47562,11 +47570,11 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.2357,
+          "mfePct": 0.3704,
+          "maePct": -0.5051,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47586,7 +47594,9 @@
         "source": "entry-backtest-ledger"
       },
       "classification": null,
-      "tags": [],
+      "tags": [
+        "FLASH_CONFIRMED"
+      ],
       "lastSeenAt": "2026-09-21T20:29:14.096Z"
     },
     {
@@ -47601,9 +47611,9 @@
       "confirmedEntryPrice": 1.5255,
       "confirmationType": "CLEAN",
       "confirmationDelayMin": 0,
-      "confirmationLostAt": null,
-      "lifecycleStatus": "ACTIVE",
-      "cooldownUntil": null,
+      "confirmationLostAt": "2026-09-21T20:43:20.676Z",
+      "lifecycleStatus": "COOLDOWN",
+      "cooldownUntil": "2026-09-21T21:28:20.676Z",
       "lastEntrySignal": "BREAKOUT_ENTRY",
       "lastSeenPrice": 1.5255,
       "lastExecutionTier": "CLEAN",
@@ -47654,11 +47664,11 @@
       },
       "setupMetrics": {
         "15m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.5965,
+          "mfePct": 0.3868,
+          "maePct": -0.7145,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47670,11 +47680,11 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.5965,
+          "mfePct": 0.3868,
+          "maePct": -0.7145,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47686,11 +47696,11 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.5965,
+          "mfePct": 0.3868,
+          "maePct": -0.7145,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47706,11 +47716,11 @@
       },
       "confirmedMetrics": {
         "15m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.5965,
+          "mfePct": 0.3868,
+          "maePct": -0.7145,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47722,11 +47732,11 @@
           "firstStop35At": null
         },
         "30m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.5965,
+          "mfePct": 0.3868,
+          "maePct": -0.7145,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47738,11 +47748,183 @@
           "firstStop35At": null
         },
         "60m": {
-          "checkedThrough": "2026-09-21T20:30:00.000Z",
+          "checkedThrough": "2026-09-21T20:40:00.000Z",
           "dataComplete": false,
           "matured": false,
-          "mfePct": 0,
-          "maePct": -0.5965,
+          "mfePct": 0.3868,
+          "maePct": -0.7145,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null,
+          "timeTo05": null,
+          "timeTo10": null
+        }
+      },
+      "legacy": {
+        "eventualHit05": null,
+        "stopHit35": null,
+        "source": "entry-backtest-ledger"
+      },
+      "classification": null,
+      "tags": [
+        "FLASH_CONFIRMED"
+      ],
+      "lastSeenAt": "2026-09-21T20:29:14.096Z"
+    },
+    {
+      "setupId": "AIOZUSDT-LONG-20260921204320676",
+      "symbol": "AIOZUSDT",
+      "direction": "LONG",
+      "firstSeenAt": "2026-09-21T20:43:20.676Z",
+      "firstSeenPrice": 0.12607,
+      "entryPrice": 0.12607,
+      "firstProbeAt": "2026-09-21T20:43:20.676Z",
+      "firstConfirmedAt": null,
+      "confirmedEntryPrice": null,
+      "confirmationType": null,
+      "confirmationDelayMin": null,
+      "confirmationLostAt": null,
+      "lifecycleStatus": "ACTIVE",
+      "cooldownUntil": null,
+      "lastEntrySignal": "RETEST_ENTRY",
+      "lastSeenPrice": 0.12607,
+      "lastExecutionTier": "MIXED",
+      "marketType": "CRYPTO_PERP",
+      "lastFinalCandidateScore": 65.7,
+      "lastExecutionScore": 2,
+      "lastMicroPersistence": "OPPOSING",
+      "lastStrictReclaim": false,
+      "lastNearReclaim": false,
+      "lastRiskFlags": [
+        "KEY_LEVEL_NOT_RECLAIMED",
+        "ORDER_FLOW_OPPOSES_DIRECTION",
+        "MICROPRICE_OPPOSES_DIRECTION",
+        "WIDE_SPREAD"
+      ],
+      "lastCvdBias": "BEARISH",
+      "lastOrderFlowBias": "BEARISH",
+      "lastMicropriceBias": "BEARISH",
+      "lastCrossConfirmation": "LOCAL_ONLY",
+      "firstSeenFeatures": {
+        "entrySignal": "RETEST_ENTRY",
+        "finalCandidateScore": 65.7,
+        "executionScore": 2,
+        "microPersistence": "OPPOSING",
+        "strictReclaim": false,
+        "nearReclaim": false,
+        "riskFlags": [
+          "KEY_LEVEL_NOT_RECLAIMED",
+          "ORDER_FLOW_OPPOSES_DIRECTION",
+          "MICROPRICE_OPPOSES_DIRECTION",
+          "WIDE_SPREAD"
+        ],
+        "cvdBias": "BEARISH",
+        "orderFlowBias": "BEARISH",
+        "micropriceBias": "BEARISH",
+        "crossConfirmation": "LOCAL_ONLY",
+        "spreadBps": 11.893,
+        "obiScore": -0.014,
+        "relativeStrengthAligned": true,
+        "relativeStrengthOpposes": false
+      },
+      "confirmedFeatures": null,
+      "setupMetrics": {
+        "15m": {
+          "checkedThrough": null,
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": null,
+          "maePct": null,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null
+        },
+        "30m": {
+          "checkedThrough": null,
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": null,
+          "maePct": null,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null
+        },
+        "60m": {
+          "checkedThrough": null,
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": null,
+          "maePct": null,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null,
+          "timeTo05": null,
+          "timeTo10": null
+        }
+      },
+      "confirmedMetrics": {
+        "15m": {
+          "checkedThrough": null,
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": null,
+          "maePct": null,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null
+        },
+        "30m": {
+          "checkedThrough": null,
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": null,
+          "maePct": null,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null
+        },
+        "60m": {
+          "checkedThrough": null,
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": null,
+          "maePct": null,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -47763,7 +47945,7 @@
       },
       "classification": null,
       "tags": [],
-      "lastSeenAt": "2026-09-21T20:29:14.096Z"
+      "lastSeenAt": "2026-09-21T20:43:20.676Z"
     }
   ]
 }
