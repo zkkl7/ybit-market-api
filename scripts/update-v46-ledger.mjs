@@ -22,6 +22,9 @@ const rules = () => ({
   maturity: "elapsed time and contiguous closed-candle coverage through window end",
   tiePolicy: "stop_wins",
   anchorPricesLocked: true,
+  featureSnapshotsLocked: true,
+  featureAttributionSource: "firstSeenFeatures / confirmedFeatures",
+  releaseStatus: "V4.6.1 frozen for forward-sample collection",
   legacyResultsSource: "data/entry-backtest.json",
 });
 
@@ -56,11 +59,8 @@ const snapshotTime = latest => new Date(
 ).toISOString();
 
 const candidatePrice = candidate => number(candidate.keyMetrics?.price ?? candidate.price);
-const candidateFeatures = candidate => ({
+const frozenFeatures = candidate => ({
   entrySignal: candidate.entrySignal ?? null,
-  lastSeenPrice: candidatePrice(candidate),
-  lastExecutionTier: candidate.executionTier ?? null,
-  marketType: candidate.marketType ?? "UNKNOWN",
   finalCandidateScore: number(candidate.finalCandidateScore ?? candidate.candidateQuality),
   executionScore: number(candidate.executionScore ?? candidate.directionConfidence),
   microPersistence: candidate.microPersistence ?? null,
@@ -71,6 +71,27 @@ const candidateFeatures = candidate => ({
   orderFlowBias: candidate.orderFlowBias ?? null,
   micropriceBias: candidate.micropriceBias ?? null,
   crossConfirmation: candidate.crossExchangeSummary?.confirmation ?? candidate.crossConfirmation ?? null,
+  spreadBps: number(candidate.spreadBps),
+  obiScore: number(candidate.obiScore),
+  relativeStrengthAligned: candidate.relativeStrengthAligned ?? null,
+  relativeStrengthOpposes: candidate.relativeStrengthOpposes ?? null,
+});
+
+const candidateFeatures = candidate => ({
+  lastEntrySignal: candidate.entrySignal ?? null,
+  lastSeenPrice: candidatePrice(candidate),
+  lastExecutionTier: candidate.executionTier ?? null,
+  marketType: candidate.marketType ?? "UNKNOWN",
+  lastFinalCandidateScore: number(candidate.finalCandidateScore ?? candidate.candidateQuality),
+  lastExecutionScore: number(candidate.executionScore ?? candidate.directionConfidence),
+  lastMicroPersistence: candidate.microPersistence ?? null,
+  lastStrictReclaim: candidate.strictPriceReclaim ?? null,
+  lastNearReclaim: candidate.nearReclaim ?? null,
+  lastRiskFlags: [...new Set(candidate.v46RiskFlags ?? candidate.v45RiskFlags ?? [])],
+  lastCvdBias: candidate.cvdBias ?? null,
+  lastOrderFlowBias: candidate.orderFlowBias ?? null,
+  lastMicropriceBias: candidate.micropriceBias ?? null,
+  lastCrossConfirmation: candidate.crossExchangeSummary?.confirmation ?? candidate.crossConfirmation ?? null,
 });
 
 const sameInstant = (a, b) => Number.isFinite(Date.parse(a)) && Date.parse(a) === Date.parse(b);
@@ -81,6 +102,8 @@ export function migrateEvent(event, candidate = null) {
   event.lastSeenPrice ??= event.firstSeenPrice;
   event.marketType ??= candidate?.marketType ?? "UNKNOWN";
   event.lastExecutionTier ??= candidate?.executionTier ?? event.confirmationType ?? null;
+  if (!("firstSeenFeatures" in event)) event.firstSeenFeatures = null;
+  if (!("confirmedFeatures" in event)) event.confirmedFeatures = null;
   if (!("confirmedEntryPrice" in event)) {
     event.confirmedEntryPrice = event.firstConfirmedAt && sameInstant(event.firstConfirmedAt, event.firstSeenAt)
       ? event.firstSeenPrice : null;
@@ -131,6 +154,7 @@ export function updateLifecycle(ledger, latest) {
         confirmationType: null, confirmationDelayMin: null, confirmationLostAt: null,
         lifecycleStatus: "ACTIVE", cooldownUntil: null,
         ...features,
+        firstSeenFeatures: frozenFeatures(candidate), confirmedFeatures: null,
         setupMetrics: emptyMetrics(), confirmedMetrics: emptyMetrics(),
         legacy: { eventualHit05: null, stopHit35: null, source: "entry-backtest-ledger" },
         classification: null, tags: [], lastSeenAt: at,
@@ -145,6 +169,7 @@ export function updateLifecycle(ledger, latest) {
         event.firstConfirmedAt = at;
         event.confirmedEntryPrice = features.lastSeenPrice;
         event.confirmationType = candidate.executionTier ?? "MIXED";
+        event.confirmedFeatures = frozenFeatures(candidate);
         event.confirmationDelayMin = round((atMs - Date.parse(event.firstSeenAt)) / 60_000, 2);
       }
     } else {

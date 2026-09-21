@@ -535,6 +535,40 @@ test('microPersistence does not count CVD-derived slope direction as another vot
   assert.equal(alignedSlopes.executionTier, 'CLEAN');
 });
 
+test('microPersistence uses a simple three-vote majority and ignores flowBias as a vote', () => {
+  const evaluateFlow = flow => api.evaluateCandidate({
+    ...base,
+    price: 1.01,
+    priceStructure: { ...base.priceStructure, keyLevel: 1, keyLevelReclaimed: true },
+    v45Microstructure: {
+      collectedAt: 1_000_000,
+      flow: { status: 'ok', takerBuyVolume: 50, takerSellVolume: 50, ...flow },
+      orderBook: { status: 'unavailable' },
+    },
+  }, 'LONG');
+
+  const twoAligned = evaluateFlow({
+    cvd1m: 10, cvd3m: 20, cvd5m: 30, cvdBias: 'BULLISH',
+    cvdAccelerationBias: 'NEUTRAL', buySellImbalance: 0.1, orderFlowBias: 'BULLISH',
+  });
+  assert.equal(twoAligned.microPersistence, 'PERSISTENT');
+
+  const flowBiasMustNotRescue = evaluateFlow({
+    cvd1m: 10, cvd3m: 20, cvd5m: 30, cvdBias: 'BULLISH',
+    cvdAccelerationBias: 'BEARISH', buySellImbalance: -0.1, orderFlowBias: 'BULLISH',
+  });
+  assert.equal(flowBiasMustNotRescue.microPersistence, 'OPPOSING');
+
+  const twoOpposing = evaluateFlow({
+    cvd1m: -10, cvd3m: -20, cvd5m: -30, cvdBias: 'BEARISH',
+    cvdAccelerationBias: 'NEUTRAL', buySellImbalance: -0.1, orderFlowBias: 'BEARISH',
+  });
+  assert.equal(twoOpposing.microPersistence, 'OPPOSING');
+
+  const unavailable = evaluateFlow({ status: 'unavailable' });
+  assert.equal(unavailable.microPersistence, 'UNAVAILABLE');
+});
+
 test('order book parser exposes microprice, spread and top-10/top-20 depth', () => {
   const book = api.parseOrderBook({
     ts: 1_000_000,

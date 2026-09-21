@@ -28,3 +28,6 @@ perpetuals and is excluded from crypto candidate pools.
 `data/v46-ledger.json` is the independent short-horizon lifecycle ledger. It
 keeps one event per active symbol+direction setup, records PROBE/CONFIRMED/lost
 transitions, and evaluates 15m/30m/60m MFE, MAE, +0.5/+1/+2 and time-to-profit.
+
+V4.6.1 is frozen for forward-sample collection. Ledger feature attribution uses
+the immutable `firstSeenFeatures` and `confirmedFeatures` snapshots.

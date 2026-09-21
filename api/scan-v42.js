@@ -997,24 +997,22 @@ function v45Confirmation(row, direction, entrySignal) {
       .filter(value => value * directionSign > 0).length >= 2,
     accelerationAligned,
     Number.isFinite(imbalance) && imbalance * directionSign >= 0.08,
-    flowBias === directionBias,
   ] : [];
   const opposingPersistenceVotes = flow.status === "ok" ? [
     [flow.cvd1m, flow.cvd3m, flow.cvd5m].filter(Number.isFinite)
       .filter(value => value * directionSign < 0).length >= 2,
     accelerationOpposes,
     Number.isFinite(imbalance) && imbalance * directionSign <= -0.08,
-    flowBias === oppositeBias,
   ] : [];
   const alignedPersistenceCount = persistenceVotes.filter(Boolean).length;
   const opposingPersistenceCount = opposingPersistenceVotes.filter(Boolean).length;
   const microPersistenceScore = flow.status === "ok"
-    ? round(clamp(50 + alignedPersistenceCount * 12.5 - opposingPersistenceCount * 12.5), 1)
+    ? round(clamp(50 + alignedPersistenceCount * (50 / 3) - opposingPersistenceCount * (50 / 3)), 1)
     : null;
   const microPersistence = flow.status !== "ok"
     ? "UNAVAILABLE"
-    : alignedPersistenceCount >= 3 ? "PERSISTENT"
-    : opposingPersistenceCount >= 3 ? "OPPOSING"
+    : alignedPersistenceCount >= 2 && alignedPersistenceCount > opposingPersistenceCount ? "PERSISTENT"
+    : opposingPersistenceCount >= 2 && opposingPersistenceCount > alignedPersistenceCount ? "OPPOSING"
     : "MIXED";
   const oiRising = (oi15 ?? 0) > 0 && (oi30 ?? 0) > 0;
   const adverseOiFlowPrice = oiRising && opposingFlow && priceAgainst;

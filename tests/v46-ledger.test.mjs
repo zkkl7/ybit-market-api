@@ -28,14 +28,41 @@ test("PROBE and first CONFIRMED prices are independently locked", () => {
   updateLifecycle(ledger, latest(10, "CONFIRMED", "CLEAN", 101));
   updateLifecycle(ledger, latest(15, "CONFIRMED", "MIXED", 103));
   const event = ledger.events[0];
+  assert.equal(event.firstSeenFeatures.executionScore, 72);
+  assert.deepEqual(event.firstSeenFeatures.riskFlags, []);
   assert.equal(event.firstSeenPrice, 100);
   assert.equal(event.entryPrice, 100);
   assert.equal(event.confirmedEntryPrice, 101);
   assert.equal(event.lastSeenPrice, 103);
   assert.equal(event.confirmationType, "CLEAN");
+  assert.equal(event.confirmedFeatures.executionScore, 72);
+  assert.equal(event.confirmedFeatures.microPersistence, "PERSISTENT");
   assert.equal(event.lastExecutionTier, "MIXED");
   assert.equal(event.confirmationDelayMin, 10);
   assert.equal(ledger.events.length, 1);
+});
+
+test("frozen features do not change while explicit last fields update", () => {
+  const ledger = createV46Ledger();
+  updateLifecycle(ledger, latest(0, "PROBE", "MIXED", 100));
+  const changed = latest(5, "PROBE", "MIXED", 103);
+  changed.radar.longCandidatePool[0].executionScore = 40;
+  changed.radar.longCandidatePool[0].v46RiskFlags = ["LATER_RISK"];
+  updateLifecycle(ledger, changed);
+  const event = ledger.events[0];
+  assert.equal(event.firstSeenFeatures.executionScore, 72);
+  assert.deepEqual(event.firstSeenFeatures.riskFlags, []);
+  assert.equal(event.lastExecutionScore, 40);
+  assert.deepEqual(event.lastRiskFlags, ["LATER_RISK"]);
+  assert.equal(event.lastSeenPrice, 103);
+});
+
+test("first-frame CONFIRMED freezes both feature snapshots", () => {
+  const ledger = createV46Ledger();
+  updateLifecycle(ledger, latest(0, "CONFIRMED", "CLEAN", 100));
+  const event = ledger.events[0];
+  assert.deepEqual(event.firstSeenFeatures, event.confirmedFeatures);
+  assert.equal(event.confirmationType, "CLEAN");
 });
 
 test("setup gains before confirmation do not leak into confirmed metrics", () => {
@@ -111,6 +138,8 @@ test("old events never borrow firstSeenPrice for an unknown confirmation price",
   migrateEvent(old);
   assert.equal(old.firstSeenPrice, 100);
   assert.equal(old.confirmedEntryPrice, null);
+  assert.equal(old.firstSeenFeatures, null);
+  assert.equal(old.confirmedFeatures, null);
   assert.equal(old.marketType, "UNKNOWN");
   old.confirmedMetrics["60m"].matured = true;
   const summary = summarize([old]);
