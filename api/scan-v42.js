@@ -924,6 +924,37 @@ function reasonFor(row, direction, persistent, xsum) {
   return bits.join("；") || "结构尚未形成持续性优势";
 }
 
+// Shadow-only comfort hints. These do not participate in V4.6.1 confirmation or tiers.
+function comfortShadow(row, direction, timingRiskFlags, microPersistence) {
+  const sign = direction === "SHORT" ? -1 : 1;
+  const p5 = numeric(row.price5mPct);
+  const p15 = numeric(row.price15mPct);
+  const oi15 = numeric(row.oi15mPct);
+  const oi30 = numeric(row.oi30mPct);
+  const flags = Array.isArray(timingRiskFlags) ? timingRiskFlags : [];
+  const lateConfirmationRisk = flags.some(flag =>
+    ["PRICE_1H_EXTENDED", "PRICE_15M_EXTENDED", "24H_EXTENDED", "SOURCE_EXTENDED"].includes(flag)
+  ) || (Number.isFinite(p15) && sign * p15 >= 1.5);
+  const priceResponseWeak = Number.isFinite(p5) && Number.isFinite(p15) &&
+    Number.isFinite(oi15) && oi15 >= 1 && sign * p5 <= 0.05 && sign * p15 <= 0.2;
+  const exhaustionRisk = Number.isFinite(p5) && Number.isFinite(p15) &&
+    Number.isFinite(oi15) && Number.isFinite(oi30) &&
+    sign * p15 >= 1.5 && sign * p5 <= 0 && oi30 >= 3 && oi15 <= oi30 * 0.25;
+  const comfortFlags = [
+    lateConfirmationRisk && "LATE_CONFIRMATION_SHADOW",
+    priceResponseWeak && "PRICE_RESPONSE_WEAK_SHADOW",
+    exhaustionRisk && "EXHAUSTION_SHADOW",
+    microPersistence === "MIXED" && "MICRO_PERSISTENCE_MIXED_SHADOW",
+  ].filter(Boolean);
+  return {
+    lateConfirmationRisk,
+    priceResponseWeak,
+    exhaustionRisk,
+    comfortState: comfortFlags.length ? "WAIT" : "FAST",
+    comfortFlags,
+  };
+}
+
 function v45Confirmation(row, direction, entrySignal) {
   const price = numeric(row.price);
   const keyLevel = numeric(row.priceStructure?.keyLevel);
@@ -1420,6 +1451,7 @@ const manualChaseAlert =
       };
 
   const v45 = v45Confirmation(row, direction, timing.entrySignal);
+  const comfort = comfortShadow(row, direction, timing.timingRiskFlags, v45.microPersistence);
 
   const candidate = {
     symbol: row.symbol,
@@ -1455,6 +1487,7 @@ const manualChaseAlert =
     timingRiskFlags: timing.timingRiskFlags,
 
     ...v45,
+    ...comfort,
     
     manualChaseAlert,
 

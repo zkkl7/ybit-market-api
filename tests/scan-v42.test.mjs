@@ -16,13 +16,24 @@ function load() {
   const transformed = source
     .replace('export default async function handler', 'async function handler')
     .replace(/export \{[\s\S]*?\};\s*$/, '') +
-    '\nglobalThis.api = { VERSION, marketClassification, crossExchangeSummary, classifyRunner, classifyV45Runner, parseRecentTrades, parseOrderBook, parseBenchmarkKlines, fetchBenchmarks, relativeStrength, v45Confirmation, evaluateCandidate, buildCandidateLists, fetchMicrostructure, enrichMicrostructure, v45AbSummary };';
+    '\nglobalThis.api = { VERSION, marketClassification, crossExchangeSummary, classifyRunner, classifyV45Runner, parseRecentTrades, parseOrderBook, parseBenchmarkKlines, fetchBenchmarks, relativeStrength, v45Confirmation, comfortShadow, evaluateCandidate, buildCandidateLists, fetchMicrostructure, enrichMicrostructure, v45AbSummary };';
   vm.runInContext(transformed, context);
   return context.api;
 }
 const api = load();
 
 const executable = new Set(['EARLY_ENTRY', 'BREAKOUT_ENTRY', 'RETEST_ENTRY']);
+
+test('comfort shadow flags delayed, weak and exhausted price without changing tier inputs', () => {
+  const weak = api.comfortShadow({ price5mPct: 0, price15mPct: 0.1, oi15mPct: 1.2, oi30mPct: 2 }, 'LONG', [], 'MIXED');
+  assert.equal(weak.priceResponseWeak, true);
+  assert.equal(weak.comfortState, 'WAIT');
+  assert.ok(weak.comfortFlags.includes('MICRO_PERSISTENCE_MIXED_SHADOW'));
+  const exhausted = api.comfortShadow({ price5mPct: -0.1, price15mPct: 1.8, oi15mPct: 1, oi30mPct: 5 }, 'LONG', [], 'PERSISTENT');
+  assert.equal(exhausted.lateConfirmationRisk, true);
+  assert.equal(exhausted.exhaustionRisk, true);
+  assert.equal(exhausted.comfortState, 'WAIT');
+});
 
 test('reports the V4.6.1 version', () => {
   assert.equal(api.VERSION, 'OI-RADAR-V4.6.1');
