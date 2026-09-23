@@ -2816,6 +2816,14 @@ export default async function handler(
 
  let oiErrors = 0;
 
+  const stageTimes = {};
+  let stageStarted = started;
+  const finishStage = (name) => {
+    const now = Date.now();
+    stageTimes[name] = now - stageStarted;
+    stageStarted = now;
+  };
+
   let klineErrors = 0;
 
   let flowErrors = 0;
@@ -2831,17 +2839,15 @@ export default async function handler(
     // 1. TICKERS
     // ========================================================
 
-    const tickerResult =
-      await bybit(
+    const tickerPromise =
+      bybit(
         "/v5/market/tickers",
         {
           category: "linear",
         }
       );
-
-
-    const tickers =
-      tickerResult.list || [];
+    // Keep the rejection observed while instrument pages are loading.
+    tickerPromise.catch(() => {});
 
 
     // ========================================================
@@ -2889,6 +2895,9 @@ export default async function handler(
 
 
     } while (cursor);
+
+    const tickers = (await tickerPromise).list || [];
+    finishStage("marketMetadata");
 
 
     // ========================================================
@@ -3357,6 +3366,7 @@ export default async function handler(
     }
 
 
+    finishStage("oiScan");
     lowLiquidityAlerts.sort(
       (a, b) =>
         Math.max(
@@ -3507,8 +3517,8 @@ export default async function handler(
                 // 5M PRICE
                 // ==============================================
 
-                const result =
-                  await bybit(
+                const klinePromise =
+                  bybit(
                     "/v5/market/kline",
                     {
 
@@ -3527,7 +3537,11 @@ export default async function handler(
                         "30",
                     }
                   );
-
+                const oi5mOutcome = bybit(
+                  "/v5/market/open-interest",
+                  { category: "linear", symbol: row.symbol, intervalTime: "5min", limit: "30" }
+                ).then(value => ({ value }), error => ({ error }));
+                const result = await klinePromise;
 
                 const kline =
                   parseKline(
@@ -3558,24 +3572,9 @@ export default async function handler(
 
                 try {
 
-                  const oi5mResult =
-                    await bybit(
-                      "/v5/market/open-interest",
-                      {
-
-                        category:
-                          "linear",
-
-                        symbol:
-                          row.symbol,
-
-                        intervalTime:
-                          "5min",
-
-                        limit:
-                          "30",
-                      }
-                    );
+                  const oi5mResponse = await oi5mOutcome;
+                  if (oi5mResponse.error) throw oi5mResponse.error;
+                  const oi5mResult = oi5mResponse.value;
 
 
                   flow5m =
@@ -3746,6 +3745,7 @@ export default async function handler(
     // 7. ACTIONABLE
     // ========================================================
 
+    finishStage("deepScan");
     const actionable =
       finalRows
 
@@ -3788,6 +3788,7 @@ export default async function handler(
       candidateRows,
       coinalyzeApiKey
     );
+    finishStage("crossExchange");
 
     // 8. OI SPIKES
     // ========================================================
@@ -3892,6 +3893,7 @@ export default async function handler(
     // OUTPUT
     // ========================================================
 
+    console.info("scan timing", { ...stageTimes, totalMs: Date.now() - started });
     return res
       .status(200)
       .json({

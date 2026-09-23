@@ -1663,18 +1663,19 @@ async function enrichMicrostructure(base, fetchImpl = fetch, nowMs = Date.now())
   const symbols = v45TargetSymbols(preliminary, maxSymbols);
   const bySymbol = new Map();
 
-  for (let index = 0; index < symbols.length; index += V45_FETCH_CONCURRENCY) {
-    const batch = symbols.slice(index, index + V45_FETCH_CONCURRENCY);
-    const results = await Promise.all(batch.map(symbol =>
-      fetchMicrostructure(symbol, fetchImpl, nowMs).catch(error => ({
+  let nextSymbol = 0;
+  await Promise.all(Array.from({ length: Math.min(V45_FETCH_CONCURRENCY, symbols.length) }, async () => {
+    while (nextSymbol < symbols.length) {
+      const symbol = symbols[nextSymbol++];
+      const result = await fetchMicrostructure(symbol, fetchImpl, nowMs).catch(error => ({
         symbol,
         collectedAt: nowMs,
         flow: { status: "unavailable", error: error.message },
         orderBook: { status: "unavailable", error: error.message },
-      }))
-    ));
-    for (const result of results) bySymbol.set(result.symbol, result);
-  }
+      }));
+      bySymbol.set(result.symbol, result);
+    }
+  }));
   const benchmarks = await benchmarksPromise;
 
   return {
@@ -1732,6 +1733,7 @@ function v45AbSummary(lists) {
 }
 
 export default async function handler(req, res) {
+  const started = Date.now();
   try {
     const response = await fetch(BASE_SCAN_URL, {
       headers: { Accept: "application/json", "User-Agent": "Bybit-OI-Radar/4.6" },
@@ -1739,8 +1741,16 @@ export default async function handler(req, res) {
     const text = await response.text();
     if (!response.ok) throw new Error(`V4.1 upstream HTTP ${response.status}: ${text.slice(0, 160)}`);
     const sourceBase = JSON.parse(text);
+    const upstreamMs = Date.now() - started;
     const base = await enrichMicrostructure(sourceBase, fetch, Date.now());
+    const microstructureMs = Date.now() - started - upstreamMs;
     const lists = buildCandidateLists(base);
+    console.info("scan-v42 timing", {
+      upstreamMs,
+      microstructureMs,
+      candidateBuildMs: Date.now() - started - upstreamMs - microstructureMs,
+      totalMs: Date.now() - started,
+    });
 
     return res.status(200).json({
       ...base,
