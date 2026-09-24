@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-09-24T08:26:25.087Z",
+  "version": "V46-EVENT-LEDGER-2",
+  "scope": "CRYPTO_PERP+CLEAN+confirmedFeatures.comfortState+confirmedMetrics.60m.matured",
+  "ALL": {
+    "n": 76,
+    "hit05": 49,
+    "hit05Rate": 0.64474,
+    "hit10": 34,
+    "hit10Rate": 0.44737,
+    "hit20": 18,
+    "hit20Rate": 0.23684,
+    "failedBefore05": 0,
+    "avgMAE": -0.01303,
+    "medianMAE": -0.0108,
+    "avgTimeTo05": 18,
+    "medianTimeTo05": 12
+  },
+  "FAST": {
+    "n": 61,
+    "hit05": 39,
+    "hit05Rate": 0.63934,
+    "hit10": 28,
+    "hit10Rate": 0.45902,
+    "hit20": 14,
+    "hit20Rate": 0.22951,
+    "failedBefore05": 0,
+    "avgMAE": -0.01158,
+    "medianMAE": -0.00924,
+    "avgTimeTo05": 17.02564,
+    "medianTimeTo05": 12
+  },
+  "WAIT": {
+    "n": 15,
+    "hit05": 10,
+    "hit05Rate": 0.66667,
+    "hit10": 6,
+    "hit10Rate": 0.4,
+    "hit20": 4,
+    "hit20Rate": 0.26667,
+    "failedBefore05": 0,
+    "avgMAE": -0.01891,
+    "medianMAE": -0.0178,
+    "avgTimeTo05": 21.8,
+    "medianTimeTo05": 20.5
+  }
+}
