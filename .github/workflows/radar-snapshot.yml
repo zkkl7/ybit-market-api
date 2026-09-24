@@ -3,8 +3,8 @@ name: Radar Snapshot
 on:
   schedule:
     # GitHub Actions cron uses UTC.
-    # Every 15 minutes.
-    - cron: "*/15 * * * *"
+    # Every 15 minutes, offset from the top of each hour.
+    - cron: "7,22,37,52 * * * *"
 
   # Allows us to test it manually from the Actions page.
   workflow_dispatch:
