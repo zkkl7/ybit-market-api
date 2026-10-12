@@ -1,12 +1,7 @@
 {
   "version": "RADAR-HISTORY-V1",
-  "updatedAt": "2026-10-12T15:20:51.745Z",
+  "updatedAt": "2026-10-12T22:57:57.935Z",
   "snapshots": [
-    {
-      "fetchedAt": "2026-10-10T22:30:54Z",
-      "scannedAt": "2026-10-10T22:30:53.930Z",
-      "candidates": []
-    },
     {
       "fetchedAt": "2026-10-11T01:52:24Z",
       "scannedAt": "2026-10-11T01:52:24.142Z",
@@ -2442,6 +2437,111 @@
           "oi15mPct": 0.97,
           "oi30mPct": 5.55,
           "oi1hPct": 6.1,
+          "crossConfirmation": "MIXED",
+          "marketType": "CRYPTO_PERP"
+        }
+      ]
+    },
+    {
+      "fetchedAt": "2026-10-12T22:57:53Z",
+      "scannedAt": "2026-10-12T22:57:52.275Z",
+      "candidates": [
+        {
+          "symbol": "BILLUSDT",
+          "direction": "LONG",
+          "candidateState": "ENTRY_NOW",
+          "candidateQuality": 77.7,
+          "finalCandidateScore": 72.9,
+          "entrySignal": "BREAKOUT_ENTRY",
+          "timingScore": 100,
+          "timingRiskFlags": [],
+          "entryStage": "CONFIRMED",
+          "executionTier": "MIXED",
+          "v45EntrySignal": "BREAKOUT_CONFIRMED",
+          "priceConfirmScore": 62,
+          "executionScore": 64,
+          "strictReclaim": false,
+          "nearReclaim": false,
+          "microPersistence": "PERSISTENT",
+          "lateConfirmationRisk": false,
+          "priceResponseWeak": false,
+          "exhaustionRisk": false,
+          "comfortState": "FAST",
+          "comfortFlags": [],
+          "cvdBias": "BULLISH",
+          "orderFlowBias": "BULLISH",
+          "micropriceBias": "BULLISH",
+          "obiScore": -0.0495,
+          "invalidationReason": "KEY_LEVEL_NOT_RECLAIMED",
+          "v46RiskFlags": [
+            "KEY_LEVEL_NOT_RECLAIMED"
+          ],
+          "v45RunnerPotential": "LOW",
+          "v45DataFreshness": {
+            "collectedAt": 1791845872323,
+            "orderFlowStatus": "ok",
+            "orderFlowSourceAt": 1791845866964,
+            "orderFlowSampleCount": 138,
+            "orderBookStatus": "ok",
+            "orderBookSourceAt": 1791845872330,
+            "orderBookAgeMs": 0,
+            "orderBookDepthLevels": 20
+          },
+          "price": 0.01049,
+          "oi15mPct": 0.35,
+          "oi30mPct": 0.46,
+          "oi1hPct": 1.53,
+          "crossConfirmation": "MIXED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "STRKUSDT",
+          "direction": "SHORT",
+          "candidateState": "ENTRY_NOW",
+          "candidateQuality": 72.2,
+          "finalCandidateScore": 68.3,
+          "entrySignal": "NO_CHASE",
+          "timingScore": 72,
+          "timingRiskFlags": [
+            "PRICE_1H_EXTENDED",
+            "24H_WARM"
+          ],
+          "entryStage": "PROBE",
+          "executionTier": "MIXED",
+          "v45EntrySignal": "NO_CHASE",
+          "priceConfirmScore": 100,
+          "executionScore": 100,
+          "strictReclaim": true,
+          "nearReclaim": true,
+          "microPersistence": "PERSISTENT",
+          "lateConfirmationRisk": true,
+          "priceResponseWeak": false,
+          "exhaustionRisk": false,
+          "comfortState": "WAIT",
+          "comfortFlags": [
+            "LATE_CONFIRMATION_SHADOW"
+          ],
+          "cvdBias": "BEARISH",
+          "orderFlowBias": "BEARISH",
+          "micropriceBias": "NEUTRAL",
+          "obiScore": -0.2437,
+          "invalidationReason": null,
+          "v46RiskFlags": [],
+          "v45RunnerPotential": "LOW",
+          "v45DataFreshness": {
+            "collectedAt": 1791845872323,
+            "orderFlowStatus": "ok",
+            "orderFlowSourceAt": 1791845872344,
+            "orderFlowSampleCount": 1000,
+            "orderBookStatus": "ok",
+            "orderBookSourceAt": 1791845872285,
+            "orderBookAgeMs": 38,
+            "orderBookDepthLevels": 20
+          },
+          "price": 0.08236,
+          "oi15mPct": 5.11,
+          "oi30mPct": 5.34,
+          "oi1hPct": 6.32,
           "crossConfirmation": "MIXED",
           "marketType": "CRYPTO_PERP"
         }
