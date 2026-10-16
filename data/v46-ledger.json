@@ -1,6 +1,6 @@
 {
   "version": "V46-EVENT-LEDGER-2",
-  "updatedAt": "2026-10-15T21:29:41.587Z",
+  "updatedAt": "2026-10-16T00:25:57.111Z",
   "rules": {
     "lifecycleKey": "symbol+direction until invalidated and 45m cooldown",
     "setupAnchor": "firstSeenAt+firstSeenPrice",
@@ -22,7 +22,7 @@
     "legacyResultsSource": "data/entry-backtest.json"
   },
   "summary": {
-    "totalEvents": 1682,
+    "totalEvents": 1683,
     "unknownMarketEvents": 5,
     "crypto": {
       "confirmed": {
@@ -92,7 +92,7 @@
         }
       },
       "probe": {
-        "total": 636,
+        "total": 637,
         "matured60m": 445,
         "goodBlock": 30,
         "falseNegative05": 269,
@@ -307614,8 +307614,8 @@
       "confirmationType": null,
       "confirmationDelayMin": null,
       "confirmationLostAt": null,
-      "lifecycleStatus": "ACTIVE",
-      "cooldownUntil": null,
+      "lifecycleStatus": "COOLDOWN",
+      "cooldownUntil": "2026-10-16T01:09:19.640Z",
       "lastEntrySignal": "RETEST_ENTRY",
       "lastSeenPrice": 0.21595,
       "lastExecutionTier": "MIXED",
@@ -307784,6 +307784,180 @@
       "classification": null,
       "tags": [],
       "lastSeenAt": "2026-10-15T21:28:24.707Z"
+    },
+    {
+      "setupId": "HBARUSDT-LONG-20261016002419640",
+      "symbol": "HBARUSDT",
+      "direction": "LONG",
+      "firstSeenAt": "2026-10-16T00:24:19.640Z",
+      "firstSeenPrice": 0.08544,
+      "entryPrice": 0.08544,
+      "firstProbeAt": "2026-10-16T00:24:19.640Z",
+      "firstConfirmedAt": null,
+      "confirmedEntryPrice": null,
+      "confirmationType": null,
+      "confirmationDelayMin": null,
+      "confirmationLostAt": null,
+      "lifecycleStatus": "ACTIVE",
+      "cooldownUntil": null,
+      "lastEntrySignal": "RETEST_ENTRY",
+      "lastSeenPrice": 0.08544,
+      "lastExecutionTier": "MIXED",
+      "marketType": "CRYPTO_PERP",
+      "lastFinalCandidateScore": 58.5,
+      "lastExecutionScore": 71,
+      "lastMicroPersistence": "OPPOSING",
+      "lastLateConfirmationRisk": false,
+      "lastPriceResponseWeak": false,
+      "lastExhaustionRisk": false,
+      "lastComfortState": "FAST",
+      "lastComfortFlags": [],
+      "lastStrictReclaim": true,
+      "lastNearReclaim": true,
+      "lastRiskFlags": [
+        "ORDER_FLOW_OPPOSES_DIRECTION"
+      ],
+      "lastCvdBias": "BEARISH",
+      "lastOrderFlowBias": "BEARISH",
+      "lastMicropriceBias": "NEUTRAL",
+      "lastCrossConfirmation": "LOCAL_ONLY",
+      "firstSeenFeatures": {
+        "entrySignal": "RETEST_ENTRY",
+        "finalCandidateScore": 58.5,
+        "executionScore": 71,
+        "microPersistence": "OPPOSING",
+        "lateConfirmationRisk": false,
+        "priceResponseWeak": false,
+        "exhaustionRisk": false,
+        "comfortState": "FAST",
+        "comfortFlags": [],
+        "strictReclaim": true,
+        "nearReclaim": true,
+        "riskFlags": [
+          "ORDER_FLOW_OPPOSES_DIRECTION"
+        ],
+        "cvdBias": "BEARISH",
+        "orderFlowBias": "BEARISH",
+        "micropriceBias": "NEUTRAL",
+        "crossConfirmation": "LOCAL_ONLY",
+        "spreadBps": 1.1703,
+        "obiScore": -0.0119,
+        "relativeStrengthAligned": true,
+        "relativeStrengthOpposes": false
+      },
+      "confirmedFeatures": null,
+      "setupMetrics": {
+        "15m": {
+          "checkedThrough": "2026-10-16T00:25:00.000Z",
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": 0,
+          "maePct": -0.0351,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null
+        },
+        "30m": {
+          "checkedThrough": "2026-10-16T00:25:00.000Z",
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": 0,
+          "maePct": -0.0351,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null
+        },
+        "60m": {
+          "checkedThrough": "2026-10-16T00:25:00.000Z",
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": 0,
+          "maePct": -0.0351,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null,
+          "timeTo05": null,
+          "timeTo10": null
+        }
+      },
+      "confirmedMetrics": {
+        "15m": {
+          "checkedThrough": null,
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": null,
+          "maePct": null,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null
+        },
+        "30m": {
+          "checkedThrough": null,
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": null,
+          "maePct": null,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null
+        },
+        "60m": {
+          "checkedThrough": null,
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": null,
+          "maePct": null,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null,
+          "timeTo05": null,
+          "timeTo10": null
+        }
+      },
+      "legacy": {
+        "eventualHit05": null,
+        "stopHit35": null,
+        "source": "entry-backtest-ledger"
+      },
+      "classification": null,
+      "tags": [],
+      "lastSeenAt": "2026-10-16T00:24:19.640Z"
     }
   ]
 }
