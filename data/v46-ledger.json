@@ -1,6 +1,6 @@
 {
   "version": "V46-EVENT-LEDGER-2",
-  "updatedAt": "2026-10-24T23:13:49.951Z",
+  "updatedAt": "2026-10-25T01:10:46.863Z",
   "rules": {
     "lifecycleKey": "symbol+direction until invalidated and 45m cooldown",
     "setupAnchor": "firstSeenAt+firstSeenPrice",
@@ -22,7 +22,7 @@
     "legacyResultsSource": "data/entry-backtest.json"
   },
   "summary": {
-    "totalEvents": 1897,
+    "totalEvents": 1898,
     "unknownMarketEvents": 5,
     "crypto": {
       "confirmed": {
@@ -92,11 +92,11 @@
         }
       },
       "probe": {
-        "total": 725,
-        "matured60m": 445,
+        "total": 726,
+        "matured60m": 446,
         "goodBlock": 30,
-        "falseNegative05": 269,
-        "falseNegative10": 182,
+        "falseNegative05": 270,
+        "falseNegative10": 183,
         "falseNegative20": 89
       }
     },
@@ -348193,8 +348193,8 @@
       "confirmationType": null,
       "confirmationDelayMin": null,
       "confirmationLostAt": null,
-      "lifecycleStatus": "ACTIVE",
-      "cooldownUntil": null,
+      "lifecycleStatus": "COOLDOWN",
+      "cooldownUntil": "2026-10-25T01:54:04.958Z",
       "lastEntrySignal": "BREAKOUT_ENTRY",
       "lastSeenPrice": 0.07969,
       "lastExecutionTier": "MIXED",
@@ -348245,6 +348245,58 @@
       "confirmedFeatures": null,
       "setupMetrics": {
         "15m": {
+          "checkedThrough": "2026-10-24T23:30:00.000Z",
+          "dataComplete": true,
+          "matured": true,
+          "mfePct": 1.0541,
+          "maePct": -0.1757,
+          "hit05": true,
+          "hit10": true,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": "2026-10-24T23:25:00.000Z",
+          "firstHit10At": "2026-10-24T23:30:00.000Z",
+          "firstHit20At": null,
+          "firstStop35At": null
+        },
+        "30m": {
+          "checkedThrough": "2026-10-24T23:45:00.000Z",
+          "dataComplete": true,
+          "matured": true,
+          "mfePct": 1.0541,
+          "maePct": -0.7404,
+          "hit05": true,
+          "hit10": true,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": "2026-10-24T23:25:00.000Z",
+          "firstHit10At": "2026-10-24T23:30:00.000Z",
+          "firstHit20At": null,
+          "firstStop35At": null
+        },
+        "60m": {
+          "checkedThrough": "2026-10-25T00:15:00.000Z",
+          "dataComplete": true,
+          "matured": true,
+          "mfePct": 1.0541,
+          "maePct": -1.5811,
+          "hit05": true,
+          "hit10": true,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": "2026-10-24T23:25:00.000Z",
+          "firstHit10At": "2026-10-24T23:30:00.000Z",
+          "firstHit20At": null,
+          "firstStop35At": null,
+          "timeTo05": 13,
+          "timeTo10": 18
+        }
+      },
+      "confirmedMetrics": {
+        "15m": {
           "checkedThrough": null,
           "dataComplete": false,
           "matured": false,
@@ -348282,6 +348334,134 @@
           "matured": false,
           "mfePct": null,
           "maePct": null,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null,
+          "timeTo05": null,
+          "timeTo10": null
+        }
+      },
+      "legacy": {
+        "eventualHit05": null,
+        "stopHit35": null,
+        "source": "entry-backtest-ledger"
+      },
+      "classification": "FALSE_NEGATIVE",
+      "tags": [],
+      "lastSeenAt": "2026-10-24T23:12:20.316Z"
+    },
+    {
+      "setupId": "IOSTUSDT-LONG-20261025010904958",
+      "symbol": "IOSTUSDT",
+      "direction": "LONG",
+      "firstSeenAt": "2026-10-25T01:09:04.958Z",
+      "firstSeenPrice": 0.0007686,
+      "entryPrice": 0.0007686,
+      "firstProbeAt": "2026-10-25T01:09:04.958Z",
+      "firstConfirmedAt": null,
+      "confirmedEntryPrice": null,
+      "confirmationType": null,
+      "confirmationDelayMin": null,
+      "confirmationLostAt": null,
+      "lifecycleStatus": "ACTIVE",
+      "cooldownUntil": null,
+      "lastEntrySignal": "BREAKOUT_ENTRY",
+      "lastSeenPrice": 0.0007686,
+      "lastExecutionTier": "MIXED",
+      "marketType": "CRYPTO_PERP",
+      "lastFinalCandidateScore": 59.4,
+      "lastExecutionScore": 66,
+      "lastMicroPersistence": "OPPOSING",
+      "lastLateConfirmationRisk": true,
+      "lastPriceResponseWeak": false,
+      "lastExhaustionRisk": false,
+      "lastComfortState": "WAIT",
+      "lastComfortFlags": [
+        "LATE_CONFIRMATION_SHADOW"
+      ],
+      "lastStrictReclaim": true,
+      "lastNearReclaim": true,
+      "lastRiskFlags": [
+        "ORDER_FLOW_OPPOSES_DIRECTION",
+        "MICROPRICE_OPPOSES_DIRECTION"
+      ],
+      "lastCvdBias": "BEARISH",
+      "lastOrderFlowBias": "BEARISH",
+      "lastMicropriceBias": "BEARISH",
+      "lastCrossConfirmation": "LOCAL_ONLY",
+      "firstSeenFeatures": {
+        "entrySignal": "BREAKOUT_ENTRY",
+        "finalCandidateScore": 59.4,
+        "executionScore": 66,
+        "microPersistence": "OPPOSING",
+        "lateConfirmationRisk": true,
+        "priceResponseWeak": false,
+        "exhaustionRisk": false,
+        "comfortState": "WAIT",
+        "comfortFlags": [
+          "LATE_CONFIRMATION_SHADOW"
+        ],
+        "strictReclaim": true,
+        "nearReclaim": true,
+        "riskFlags": [
+          "ORDER_FLOW_OPPOSES_DIRECTION",
+          "MICROPRICE_OPPOSES_DIRECTION"
+        ],
+        "cvdBias": "BEARISH",
+        "orderFlowBias": "BEARISH",
+        "micropriceBias": "BEARISH",
+        "crossConfirmation": "LOCAL_ONLY",
+        "spreadBps": 1.3032,
+        "obiScore": 0.1213,
+        "relativeStrengthAligned": true,
+        "relativeStrengthOpposes": false
+      },
+      "confirmedFeatures": null,
+      "setupMetrics": {
+        "15m": {
+          "checkedThrough": "2026-10-25T01:10:00.000Z",
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": 0,
+          "maePct": -0.3253,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null
+        },
+        "30m": {
+          "checkedThrough": "2026-10-25T01:10:00.000Z",
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": 0,
+          "maePct": -0.3253,
+          "hit05": false,
+          "hit10": false,
+          "hit20": false,
+          "failedBefore05": false,
+          "failedBefore10": false,
+          "firstHit05At": null,
+          "firstHit10At": null,
+          "firstHit20At": null,
+          "firstStop35At": null
+        },
+        "60m": {
+          "checkedThrough": "2026-10-25T01:10:00.000Z",
+          "dataComplete": false,
+          "matured": false,
+          "mfePct": 0,
+          "maePct": -0.3253,
           "hit05": false,
           "hit10": false,
           "hit20": false,
@@ -348354,7 +348534,7 @@
       },
       "classification": null,
       "tags": [],
-      "lastSeenAt": "2026-10-24T23:12:20.316Z"
+      "lastSeenAt": "2026-10-25T01:09:04.958Z"
     }
   ]
 }
