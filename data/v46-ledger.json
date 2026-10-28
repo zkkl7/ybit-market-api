@@ -1,6 +1,6 @@
 {
   "version": "V46-EVENT-LEDGER-2",
-  "updatedAt": "2026-10-28T16:01:22.717Z",
+  "updatedAt": "2026-10-28T21:03:28.464Z",
   "rules": {
     "lifecycleKey": "symbol+direction until invalidated and 45m cooldown",
     "setupAnchor": "firstSeenAt+firstSeenPrice",
@@ -358779,8 +358779,8 @@
       "confirmationType": null,
       "confirmationDelayMin": null,
       "confirmationLostAt": null,
-      "lifecycleStatus": "ACTIVE",
-      "cooldownUntil": null,
+      "lifecycleStatus": "COOLDOWN",
+      "cooldownUntil": "2026-10-28T21:47:02.182Z",
       "lastEntrySignal": "RETEST_ENTRY",
       "lastSeenPrice": 103.33,
       "lastExecutionTier": "MIXED",
