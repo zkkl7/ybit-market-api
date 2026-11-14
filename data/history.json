@@ -1,119 +1,7 @@
 {
   "version": "RADAR-HISTORY-V1",
-  "updatedAt": "2026-11-14T03:12:32.595Z",
+  "updatedAt": "2026-11-14T10:23:23.835Z",
   "snapshots": [
-    {
-      "fetchedAt": "2026-11-12T02:57:19Z",
-      "scannedAt": "2026-11-12T02:57:19.129Z",
-      "candidates": [
-        {
-          "symbol": "MAGMAUSDT",
-          "direction": "LONG",
-          "candidateState": "PRE_ENTRY",
-          "candidateQuality": 61.9,
-          "finalCandidateScore": 59.8,
-          "entrySignal": "RETEST_ENTRY",
-          "timingScore": 90,
-          "timingRiskFlags": [
-            "SETUP_WEAK"
-          ],
-          "entryStage": "PROBE",
-          "executionTier": "MIXED",
-          "v45EntrySignal": "RETEST_PROBE",
-          "priceConfirmScore": 69,
-          "executionScore": 61,
-          "strictReclaim": true,
-          "nearReclaim": true,
-          "microPersistence": "OPPOSING",
-          "lateConfirmationRisk": false,
-          "priceResponseWeak": false,
-          "exhaustionRisk": false,
-          "comfortState": "FAST",
-          "comfortFlags": [],
-          "cvdBias": "BEARISH",
-          "orderFlowBias": "BEARISH",
-          "micropriceBias": "BEARISH",
-          "obiScore": 0.0612,
-          "invalidationReason": "ORDER_FLOW_OPPOSES_DIRECTION;MICROPRICE_OPPOSES_DIRECTION",
-          "v46RiskFlags": [
-            "ORDER_FLOW_OPPOSES_DIRECTION",
-            "MICROPRICE_OPPOSES_DIRECTION"
-          ],
-          "v45RunnerPotential": "LOW",
-          "v45DataFreshness": {
-            "collectedAt": 1794452239164,
-            "orderFlowStatus": "ok",
-            "orderFlowSourceAt": 1794452239184,
-            "orderFlowSampleCount": 780,
-            "orderBookStatus": "ok",
-            "orderBookSourceAt": 1794452239105,
-            "orderBookAgeMs": 59,
-            "orderBookDepthLevels": 20
-          },
-          "price": 0.2754,
-          "oi15mPct": 0.9,
-          "oi30mPct": 1.23,
-          "oi1hPct": 3.78,
-          "crossConfirmation": "MIXED",
-          "marketType": "CRYPTO_PERP"
-        },
-        {
-          "symbol": "KGENUSDT",
-          "direction": "LONG",
-          "candidateState": "PRE_ENTRY",
-          "candidateQuality": 59.8,
-          "finalCandidateScore": 58.1,
-          "entrySignal": "WAIT",
-          "timingScore": 57,
-          "timingRiskFlags": [
-            "SETUP_WEAK",
-            "24H_WARM"
-          ],
-          "entryStage": "PROBE",
-          "executionTier": "MIXED",
-          "v45EntrySignal": "WAIT",
-          "priceConfirmScore": 0,
-          "executionScore": 0,
-          "strictReclaim": false,
-          "nearReclaim": false,
-          "microPersistence": "OPPOSING",
-          "lateConfirmationRisk": false,
-          "priceResponseWeak": false,
-          "exhaustionRisk": false,
-          "comfortState": "FAST",
-          "comfortFlags": [],
-          "cvdBias": "BEARISH",
-          "orderFlowBias": "BEARISH",
-          "micropriceBias": "BEARISH",
-          "obiScore": -0.0271,
-          "invalidationReason": "KEY_LEVEL_NOT_RECLAIMED;ORDER_FLOW_OPPOSES_DIRECTION;MICROPRICE_OPPOSES_DIRECTION;WIDE_SPREAD;RELATIVE_STRENGTH_OPPOSES_DIRECTION",
-          "v46RiskFlags": [
-            "KEY_LEVEL_NOT_RECLAIMED",
-            "ORDER_FLOW_OPPOSES_DIRECTION",
-            "MICROPRICE_OPPOSES_DIRECTION",
-            "WIDE_SPREAD",
-            "RELATIVE_STRENGTH_OPPOSES_DIRECTION"
-          ],
-          "v45RunnerPotential": "LOW",
-          "v45DataFreshness": {
-            "collectedAt": 1794452239164,
-            "orderFlowStatus": "ok",
-            "orderFlowSourceAt": 1794452238737,
-            "orderFlowSampleCount": 833,
-            "orderBookStatus": "ok",
-            "orderBookSourceAt": 1794452239174,
-            "orderBookAgeMs": 0,
-            "orderBookDepthLevels": 20
-          },
-          "price": 0.0817,
-          "oi15mPct": 1.17,
-          "oi30mPct": 2.29,
-          "oi1hPct": 4.07,
-          "crossConfirmation": "MIXED",
-          "marketType": "CRYPTO_PERP"
-        }
-      ]
-    },
     {
       "fetchedAt": "2026-11-12T11:03:24Z",
       "scannedAt": "2026-11-12T11:03:23.895Z",
@@ -1685,6 +1573,11 @@
           "marketType": "CRYPTO_PERP"
         }
       ]
+    },
+    {
+      "fetchedAt": "2026-11-14T10:23:19Z",
+      "scannedAt": "2026-11-14T10:23:18.496Z",
+      "candidates": []
     }
   ]
 }
