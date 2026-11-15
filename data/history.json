@@ -1,115 +1,7 @@
 {
   "version": "RADAR-HISTORY-V1",
-  "updatedAt": "2026-11-15T17:07:31.951Z",
+  "updatedAt": "2026-11-15T21:47:01.905Z",
   "snapshots": [
-    {
-      "fetchedAt": "2026-11-13T22:35:56Z",
-      "scannedAt": "2026-11-13T22:35:55.677Z",
-      "candidates": [
-        {
-          "symbol": "JCTUSDT",
-          "direction": "LONG",
-          "candidateState": "RETEST_ENTRY",
-          "candidateQuality": 65,
-          "finalCandidateScore": 62.4,
-          "entrySignal": "NO_CHASE",
-          "timingScore": 63,
-          "timingRiskFlags": [
-            "PRICE_WARM",
-            "PRICE_15M_EXTENDED"
-          ],
-          "entryStage": "PROBE",
-          "executionTier": "MIXED",
-          "v45EntrySignal": "NO_CHASE",
-          "priceConfirmScore": 60,
-          "executionScore": 60,
-          "strictReclaim": true,
-          "nearReclaim": true,
-          "microPersistence": "OPPOSING",
-          "lateConfirmationRisk": true,
-          "priceResponseWeak": false,
-          "exhaustionRisk": false,
-          "comfortState": "WAIT",
-          "comfortFlags": [
-            "LATE_CONFIRMATION_SHADOW"
-          ],
-          "cvdBias": "BEARISH",
-          "orderFlowBias": "BEARISH",
-          "micropriceBias": "BEARISH",
-          "obiScore": -0.0539,
-          "invalidationReason": "ORDER_FLOW_OPPOSES_DIRECTION;MICROPRICE_OPPOSES_DIRECTION",
-          "v46RiskFlags": [
-            "ORDER_FLOW_OPPOSES_DIRECTION",
-            "MICROPRICE_OPPOSES_DIRECTION"
-          ],
-          "v45RunnerPotential": "LOW",
-          "v45DataFreshness": {
-            "collectedAt": 1794609355721,
-            "orderFlowStatus": "ok",
-            "orderFlowSourceAt": 1794609350520,
-            "orderFlowSampleCount": 1000,
-            "orderBookStatus": "ok",
-            "orderBookSourceAt": 1794609355214,
-            "orderBookAgeMs": 507,
-            "orderBookDepthLevels": 20
-          },
-          "price": 0.002182,
-          "oi15mPct": 1.95,
-          "oi30mPct": 2.23,
-          "oi1hPct": 2.21,
-          "crossConfirmation": "LOCAL_ONLY",
-          "marketType": "CRYPTO_PERP"
-        },
-        {
-          "symbol": "SYRUPUSDT",
-          "direction": "LONG",
-          "candidateState": "PRE_ENTRY",
-          "candidateQuality": 55,
-          "finalCandidateScore": 54.1,
-          "entrySignal": "BREAKOUT_ENTRY",
-          "timingScore": 97,
-          "timingRiskFlags": [
-            "SETUP_WEAK"
-          ],
-          "entryStage": "CONFIRMED",
-          "executionTier": "CLEAN",
-          "v45EntrySignal": "BREAKOUT_CONFIRMED",
-          "priceConfirmScore": 92,
-          "executionScore": 94,
-          "strictReclaim": true,
-          "nearReclaim": true,
-          "microPersistence": "PERSISTENT",
-          "lateConfirmationRisk": false,
-          "priceResponseWeak": false,
-          "exhaustionRisk": false,
-          "comfortState": "FAST",
-          "comfortFlags": [],
-          "cvdBias": "BULLISH",
-          "orderFlowBias": "BULLISH",
-          "micropriceBias": "NEUTRAL",
-          "obiScore": -0.1375,
-          "invalidationReason": null,
-          "v46RiskFlags": [],
-          "v45RunnerPotential": "LOW",
-          "v45DataFreshness": {
-            "collectedAt": 1794609355721,
-            "orderFlowStatus": "ok",
-            "orderFlowSourceAt": 1794609333056,
-            "orderFlowSampleCount": 88,
-            "orderBookStatus": "ok",
-            "orderBookSourceAt": 1794609355493,
-            "orderBookAgeMs": 228,
-            "orderBookDepthLevels": 20
-          },
-          "price": 0.11294,
-          "oi15mPct": 1.85,
-          "oi30mPct": 1.4,
-          "oi1hPct": 2.57,
-          "crossConfirmation": "CONFIRMED",
-          "marketType": "CRYPTO_PERP"
-        }
-      ]
-    },
     {
       "fetchedAt": "2026-11-14T03:12:28Z",
       "scannedAt": "2026-11-14T03:12:27.820Z",
@@ -2225,6 +2117,161 @@
           "oi1hPct": 1.86,
           "crossConfirmation": "CONFIRMED",
           "marketType": "CRYPTO_PERP"
+        }
+      ]
+    },
+    {
+      "fetchedAt": "2026-11-15T21:46:58Z",
+      "scannedAt": "2026-11-15T21:46:57.410Z",
+      "candidates": [
+        {
+          "symbol": "PIEVERSEUSDT",
+          "direction": "LONG",
+          "candidateState": "ENTRY_NOW",
+          "candidateQuality": 93.3,
+          "finalCandidateScore": 85.7,
+          "entrySignal": "BREAKOUT_ENTRY",
+          "timingScore": 100,
+          "timingRiskFlags": [],
+          "entryStage": "CONFIRMED",
+          "executionTier": "MIXED",
+          "v45EntrySignal": "BREAKOUT_CONFIRMED",
+          "priceConfirmScore": 84,
+          "executionScore": 86,
+          "strictReclaim": true,
+          "nearReclaim": true,
+          "microPersistence": "PERSISTENT",
+          "lateConfirmationRisk": false,
+          "priceResponseWeak": false,
+          "exhaustionRisk": false,
+          "comfortState": "FAST",
+          "comfortFlags": [],
+          "cvdBias": "BULLISH",
+          "orderFlowBias": "NEUTRAL",
+          "micropriceBias": "BEARISH",
+          "obiScore": -0.0244,
+          "invalidationReason": "MICROPRICE_OPPOSES_DIRECTION",
+          "v46RiskFlags": [
+            "MICROPRICE_OPPOSES_DIRECTION"
+          ],
+          "v45RunnerPotential": "MEDIUM",
+          "v45DataFreshness": {
+            "collectedAt": 1794779217449,
+            "orderFlowStatus": "ok",
+            "orderFlowSourceAt": 1794779208861,
+            "orderFlowSampleCount": 566,
+            "orderBookStatus": "ok",
+            "orderBookSourceAt": 1794779217504,
+            "orderBookAgeMs": 0,
+            "orderBookDepthLevels": 20
+          },
+          "price": 1.9113,
+          "oi15mPct": 0.58,
+          "oi30mPct": 1.06,
+          "oi1hPct": 2.08,
+          "crossConfirmation": "CONFIRMED",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "IBITUSDT",
+          "direction": "LONG",
+          "candidateState": "RETEST_ENTRY",
+          "candidateQuality": 70.8,
+          "finalCandidateScore": 66.8,
+          "entrySignal": "RETEST_ENTRY",
+          "timingScore": 100,
+          "timingRiskFlags": [],
+          "entryStage": "CONFIRMED",
+          "executionTier": "CLEAN",
+          "v45EntrySignal": "RETEST_CONFIRMED",
+          "priceConfirmScore": 100,
+          "executionScore": 100,
+          "strictReclaim": true,
+          "nearReclaim": true,
+          "microPersistence": "PERSISTENT",
+          "lateConfirmationRisk": false,
+          "priceResponseWeak": true,
+          "exhaustionRisk": false,
+          "comfortState": "WAIT",
+          "comfortFlags": [
+            "PRICE_RESPONSE_WEAK_SHADOW"
+          ],
+          "cvdBias": "BULLISH",
+          "orderFlowBias": "BULLISH",
+          "micropriceBias": "BULLISH",
+          "obiScore": 0.375,
+          "invalidationReason": "RELATIVE_STRENGTH_OPPOSES_DIRECTION",
+          "v46RiskFlags": [
+            "RELATIVE_STRENGTH_OPPOSES_DIRECTION"
+          ],
+          "v45RunnerPotential": "LOW",
+          "v45DataFreshness": {
+            "collectedAt": 1794779217449,
+            "orderFlowStatus": "ok",
+            "orderFlowSourceAt": 1794779169957,
+            "orderFlowSampleCount": 15,
+            "orderBookStatus": "ok",
+            "orderBookSourceAt": 1794779217306,
+            "orderBookAgeMs": 143,
+            "orderBookDepthLevels": 20
+          },
+          "price": 36.75,
+          "oi15mPct": 13.3,
+          "oi30mPct": 12.97,
+          "oi1hPct": 12.99,
+          "crossConfirmation": "LOCAL_ONLY",
+          "marketType": "CRYPTO_PERP"
+        },
+        {
+          "symbol": "NBISUSDT",
+          "direction": "LONG",
+          "candidateState": "RETEST_ENTRY",
+          "candidateQuality": 67.8,
+          "finalCandidateScore": 64.7,
+          "entrySignal": "RETEST_ENTRY",
+          "timingScore": 100,
+          "timingRiskFlags": [
+            "LONG_FUNDING_CROWDED"
+          ],
+          "entryStage": "CONFIRMED",
+          "executionTier": "CLEAN",
+          "v45EntrySignal": "RETEST_CONFIRMED",
+          "priceConfirmScore": 85,
+          "executionScore": 82,
+          "strictReclaim": true,
+          "nearReclaim": true,
+          "microPersistence": "UNAVAILABLE",
+          "lateConfirmationRisk": false,
+          "priceResponseWeak": false,
+          "exhaustionRisk": false,
+          "comfortState": "FAST",
+          "comfortFlags": [],
+          "cvdBias": "UNAVAILABLE",
+          "orderFlowBias": "UNAVAILABLE",
+          "micropriceBias": "NEUTRAL",
+          "obiScore": null,
+          "invalidationReason": "ORDER_FLOW_UNAVAILABLE;ORDER_BOOK_UNAVAILABLE",
+          "v46RiskFlags": [
+            "ORDER_FLOW_UNAVAILABLE",
+            "ORDER_BOOK_UNAVAILABLE"
+          ],
+          "v45RunnerPotential": null,
+          "v45DataFreshness": {
+            "collectedAt": null,
+            "orderFlowStatus": "unavailable",
+            "orderFlowSourceAt": null,
+            "orderFlowSampleCount": 0,
+            "orderBookStatus": "unavailable",
+            "orderBookSourceAt": null,
+            "orderBookAgeMs": null,
+            "orderBookDepthLevels": 0
+          },
+          "price": 113.99,
+          "oi15mPct": 0.48,
+          "oi30mPct": 0.53,
+          "oi1hPct": 1.48,
+          "crossConfirmation": "CONFIRMED",
+          "marketType": "TRADFI_PERP"
         }
       ]
     }
